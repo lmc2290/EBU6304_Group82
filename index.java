@@ -1,69 +1,69 @@
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 
 public class RecruitmentLoginSystem extends JFrame {
 
-    // Define UI components
+    // 1. Constants Definition
+    // Eliminate magic numbers/strings for easier future updates to themes and text
+    private static final String APP_TITLE = "International School TA Recruitment System";
+    private static final int WINDOW_WIDTH = 450;
+    private static final int WINDOW_HEIGHT = 400;
+
+    // Color configuration
+    private static final Color BG_COLOR = new Color(247, 247, 247);
+    private static final Color PANEL_BG_COLOR = Color.WHITE;
+    private static final Color BORDER_COLOR = new Color(230, 230, 230);
+    private static final Color PRIMARY_COLOR = new Color(0, 102, 204);
+
+    // Font configuration
+    private static final Font TITLE_FONT = new Font("Arial", Font.PLAIN, 24);
+    private static final Font BTN_FONT = new Font("Arial", Font.BOLD, 16);
+
+    // 2. Core UI Component Declarations
+    // Only declare components that need to be read or manipulated in the business logic
     private JTextField idField;
     private JPasswordField passwordField;
     private JButton loginBtn;
 
+    // 3. Constructor
+    // Clear flow: Initialize settings -> Build UI -> Bind events
     public RecruitmentLoginSystem() {
-        // --- 1. Basic window settings ---
-        setTitle("International School Teaching Assistant Recruitment System");
-        setSize(450, 400);
+        initFrameSettings();
+        buildUI();
+        bindEvents();
+    }
+
+    // 4. Initialization Methods
+    /**
+     * Set basic properties of the main window
+     */
+    private void initFrameSettings() {
+        setTitle(APP_TITLE);
+        setSize(WINDOW_WIDTH, WINDOW_HEIGHT);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLocationRelativeTo(null); // Center the window on screen
-        setLayout(new GridBagLayout()); // Use GridBagLayout to simulate HTML centering effect
-        getContentPane().setBackground(new Color(247, 247, 247)); // Light gray background
+        setLocationRelativeTo(null); // Center on screen
+        setLayout(new GridBagLayout()); // Used to center the inner card panel
+        getContentPane().setBackground(BG_COLOR);
+    }
 
-        // --- 2. Create main panel (simulating HTML .container) ---
-        JPanel container = new JPanel();
-        container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
-        container.setBackground(Color.WHITE);
-        container.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(230, 230, 230), 1),
-                BorderFactory.createEmptyBorder(40, 40, 40, 40)
-        ));
+    /**
+     * Build and assemble all UI components
+     */
+    private void buildUI() {
+        // 1. Create the main card panel
+        JPanel container = createContainerPanel();
 
-        // --- 3. Welcome message ---
-        JLabel welcomeLabel = new JLabel("Welcome, User");
-        welcomeLabel.setFont(new Font("Arial", Font.PLAIN, 24));
-        welcomeLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        welcomeLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 30, 0));
-
-        // --- 4. ID input field ---
-        JLabel idLabel = new JLabel("ID");
-        idLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        idField = new JTextField();
-        idField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-        // Simulate placeholder (Swing doesn't support it natively, using ToolTip as a fallback)
-        idField.setToolTipText("Student/Staff ID");
-
-        // --- 5. Password input field ---
-        JLabel pwdLabel = new JLabel("Password");
-        pwdLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        // 2. Initialize individual components
+        JLabel welcomeLabel = createWelcomeLabel();
+        JLabel idLabel = createFormLabel("ID");
+        idField = createInputField("Student/Staff ID");
+        JLabel pwdLabel = createFormLabel("Password");
         passwordField = new JPasswordField();
-        passwordField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        setupInputStyle(passwordField); // Reuse the style settings of the text field
+        loginBtn = createLoginButton();
+        JLabel contactAdmin = createContactAdminLabel();
 
-        // --- 6. Login button ---
-        loginBtn = new JButton("Login");
-        loginBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 45));
-        loginBtn.setBackground(new Color(0, 102, 204));
-        loginBtn.setForeground(Color.WHITE);
-        loginBtn.setFocusPainted(false);
-        loginBtn.setFont(new Font("Arial", Font.BOLD, 16));
-        loginBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        // --- 7. Bottom contact admin link ---
-        JLabel contactAdmin = new JLabel("Contact admin");
-        contactAdmin.setForeground(new Color(0, 102, 204));
-        contactAdmin.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        contactAdmin.setAlignmentX(Component.RIGHT_ALIGNMENT);
-
-        // --- 8. Assemble the panel ---
+        // 3. Assemble components into the panel from top to bottom
         container.add(welcomeLabel);
         container.add(idLabel);
         container.add(Box.createRigidArea(new Dimension(0, 5)));
@@ -77,48 +77,122 @@ public class RecruitmentLoginSystem extends JFrame {
         container.add(Box.createRigidArea(new Dimension(0, 15)));
         container.add(contactAdmin);
 
+        // 4. Add the panel to the window
         add(container);
-
-        // --- 9. Login logic (corresponding to the script in HTML) ---
-        loginBtn.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                handleLogin();
-            }
-        });
     }
 
+    /**
+     * Bind interactive events such as button clicks
+     */
+    private void bindEvents() {
+        // Use Lambda expressions to make event binding extremely concise
+        loginBtn.addActionListener(e -> handleLogin());
+        
+        // Optional: Allow pressing the Enter key in the password field to log in
+        passwordField.addActionListener(e -> handleLogin());
+    }
+
+    // 5. Business Logic
+    
+    /**
+     * Handle login validation logic
+     */
     private void handleLogin() {
         String idStr = idField.getText().trim();
         String password = new String(passwordField.getPassword());
 
-        // Null/Empty check
+        // Form null/empty check
         if (idStr.isEmpty() || password.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please enter both ID and Password!", "Error", JOptionPane.ERROR_MESSAGE);
+            showError("Please enter both ID and Password!");
             return;
         }
 
+        // Identity verification logic
         try {
             int idNum = Integer.parseInt(idStr);
 
-            // Identity judgment logic
             if (idNum == 0) {
-                JOptionPane.showMessageDialog(this, "Admin identity detected, will redirect to admin page");
+                showMessage("Admin identity detected, will redirect to admin page");
             } else if (idNum >= 1 && idNum <= 100) {
-                JOptionPane.showMessageDialog(this, "MO identity detected, will redirect to MO page");
+                showMessage("MO identity detected, will redirect to MO page");
             } else {
-                JOptionPane.showMessageDialog(this, "TA (Student) identity detected, will redirect to TA page");
+                showMessage("TA (Student) identity detected, will redirect to TA page");
             }
 
         } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "ID must be a number!", "Error", JOptionPane.ERROR_MESSAGE);
+            showError("ID must be a valid number!");
         }
     }
 
+    // 6. UI Helper / Factory Methods
+    // Extract repetitive component setup code to keep the main flow clean
+    private JPanel createContainerPanel() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBackground(PANEL_BG_COLOR);
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER_COLOR, 1),
+                BorderFactory.createEmptyBorder(40, 40, 40, 40)
+        ));
+        return panel;
+    }
+
+    private JLabel createWelcomeLabel() {
+        JLabel label = new JLabel("Welcome, User");
+        label.setFont(TITLE_FONT);
+        label.setAlignmentX(Component.CENTER_ALIGNMENT);
+        label.setBorder(BorderFactory.createEmptyBorder(0, 0, 30, 0));
+        return label;
+    }
+
+    private JLabel createFormLabel(String text) {
+        JLabel label = new JLabel(text);
+        label.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return label;
+    }
+
+    private JTextField createInputField(String tooltip) {
+        JTextField field = new JTextField();
+        setupInputStyle(field);
+        field.setToolTipText(tooltip);
+        return field;
+    }
+
+    private void setupInputStyle(JTextField field) {
+        field.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        field.setAlignmentX(Component.LEFT_ALIGNMENT);
+    }
+
+    private JButton createLoginButton() {
+        JButton btn = new JButton("Login");
+        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 45));
+        btn.setBackground(PRIMARY_COLOR);
+        btn.setForeground(Color.WHITE);
+        btn.setFocusPainted(false);
+        btn.setFont(BTN_FONT);
+        btn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        return btn;
+    }
+
+    private JLabel createContactAdminLabel() {
+        JLabel label = new JLabel("Contact admin");
+        label.setForeground(PRIMARY_COLOR);
+        label.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        label.setAlignmentX(Component.RIGHT_ALIGNMENT);
+        return label;
+    }
+
+    // Encapsulate message dialogs to simplify code
+    private void showMessage(String message) {
+        JOptionPane.showMessageDialog(this, message, "Information", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void showError(String message) {
+        JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+
+    // 7. Main Method Entry Point
     public static void main(String[] args) {
-        // Run the Swing program on the Event Dispatch Thread (EDT)
-        SwingUtilities.invokeLater(() -> {
-            new RecruitmentLoginSystem().setVisible(true);
-        });
+        SwingUtilities.invokeLater(() -> new RecruitmentLoginSystem().setVisible(true));
     }
 }
