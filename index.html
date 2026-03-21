@@ -92,11 +92,11 @@
         }
 
         .login-btn:hover {
-            background-color: #0055aa;
+            background-color: rgb(69, 196, 221);
         }
 
         /* -----------------------
-           Contact admin link
+           Contact admin link 
         ----------------------- */
         .contact-admin {
             text-align: right;
@@ -106,11 +106,24 @@
 
         .contact-admin a {
             color: #0066cc;
-            text-decoration: none;
+            text-decoration: underline; 
+            background: none;
+            border: none;
+            padding: 0;
+            margin: 0;
+            cursor: pointer; 
+            font-family: inherit; 
+            font-size: inherit;
         }
 
+        
+        .contact-admin a:hover {
+            color: rgb(69, 196, 221);
+            text-decoration: underline; 
+            background: none; 
+
         /* -----------------------
-           System Logo
+           System Logo 
         ----------------------- */
         .logo {
             margin-top: 30px;
@@ -122,7 +135,7 @@
         }
 
         /* -----------------------
-           Top-right corner header
+           Top-right corner header 
         ----------------------- */
         .header {
             position: absolute;
@@ -134,11 +147,6 @@
     </style>
 </head>
 <body>
-    <!-- Top-right page header -->
-    <div class="header">
-        Use campus network account and password to login
-    </div>
-
     <!-- Login container -->
     <div class="container">
         <!-- Welcome message -->
@@ -159,13 +167,10 @@
         <!-- Login button -->
         <button class="login-btn" onclick="login()">Login</button>
 
-        <!-- Contact administrator -->
+        <!-- Contact administrator  -->
         <div class="contact-admin">
-            <a href="#">Contact admin</a>
+            <a href="mailto:admin@school.com">Contact admin</a> 
         </div>
-
-        <!-- System Logo -->
-        <div class="logo">(logo)</div>
     </div>
 
     <script>
@@ -181,6 +186,40 @@
             }
             // TODO: Replace with real backend authentication
             alert(`Submitted! ID: ${id}, Password: ${code}`);
+
+            
+            /* =====================================
+               The following is the commented identity judgment logic (for future activation)
+               [Assumed ID Rules]:
+               - Administrator (admin): ID = 0000
+               - MO: ID range 0001 - 0100
+               - Student (TA): ID ≥ 0101 (all remaining IDs)
+            ===================================== */
+            /*
+            // Convert ID to number and remove leading/trailing spaces to unify judgment rules
+            const idNum = parseInt(id.toString().trim());
+            
+            // Fault tolerance for non-numeric ID
+            if (isNaN(idNum)) {
+                alert('ID must be a number!');
+                return;
+            }
+            
+            // Judge identity and redirect to corresponding page
+            if (idNum === 0000) {
+                // Redirect to admin page
+                // window.location.href = 'admin-dashboard.html';
+                alert('Admin identity detected, will redirect to admin page');
+            } else if (idNum >= 0001 && idNum <= 0100) {
+                // Redirect to MO page
+                // window.location.href = 'mo-dashboard.html';
+                alert('MO identity detected, will redirect to MO page');
+            } else {
+                // Redirect to TA (Student) page (all remaining IDs)
+                // window.location.href = 'ta-dashboard.html';
+                alert('TA (Student) identity detected, will redirect to TA page');
+            }
+            */
         }
     </script>
 </body>
