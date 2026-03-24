@@ -66,25 +66,20 @@ public class LoginController {
                 dashboard = new AdminDashboardUI(user);
                 break;
             case "MO":
-                // TODO: You can create an MODashboardUI later
-                // dashboard = new MODashboardUI(user);
+                dashboard = new MODashboardUI(user);
                 break;
             case "TA":
-                // TODO: You can create a TADashboardUI later
-                // dashboard = new TADashboardUI(user);
+                dashboard = new TADashboardUI(user);
                 break;
             default:
                 loginUI.showError("Unknown role detected.");
                 return;
         }
 
-        // If the dashboard is successfully created, display it
+        // Display the corresponding dashboard
         if (dashboard != null) {
             dashboard.setVisible(true);
             System.out.println("Routing complete for: " + user.getRole());
-        } else {
-            // Temporary prompt, you can delete this line once the other two UIs are built
-            JOptionPane.showMessageDialog(null, user.getRole() + " Dashboard is under construction.");
         }
     }
 }
