@@ -1,5 +1,7 @@
 package LoginPage;
 
+import javax.swing.*;
+
 /**
  * Control Class
  * Encapsulates the coordination and authentication logic.
@@ -56,9 +58,33 @@ public class LoginController {
         // Hide the login screen
         loginUI.setVisible(false);
 
-        // TODO: Instantiate the specific concrete DashboardUI based on user.getRole()
-        // Example: if (user.getRole().equals("TA")) { new TADashboardUI(user).setVisible(true); }
+        // Instantiate the specific dashboard based on the user's role
+        DashBoardUI dashboard = null;
 
-        System.out.println("Routing complete for: " + user.getRole());
+        switch (user.getRole()) {
+            case "Admin":
+                dashboard = new AdminDashboardUI(user);
+                break;
+            case "MO":
+                // TODO: You can create an MODashboardUI later
+                // dashboard = new MODashboardUI(user);
+                break;
+            case "TA":
+                // TODO: You can create a TADashboardUI later
+                // dashboard = new TADashboardUI(user);
+                break;
+            default:
+                loginUI.showError("Unknown role detected.");
+                return;
+        }
+
+        // If the dashboard is successfully created, display it
+        if (dashboard != null) {
+            dashboard.setVisible(true);
+            System.out.println("Routing complete for: " + user.getRole());
+        } else {
+            // Temporary prompt, you can delete this line once the other two UIs are built
+            JOptionPane.showMessageDialog(null, user.getRole() + " Dashboard is under construction.");
+        }
     }
 }
