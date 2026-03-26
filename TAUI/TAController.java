@@ -27,19 +27,42 @@ public class TAController {
     }
 
     /**
-     * US-02: Job list filtering logic.
-     * This is simplified; in reality, multiple filters could be applied
-     * based on the dropdown conditions.
+     * US-02: Advanced job list filtering logic.
+     * Evaluates multiple conditions including dropdown selections and keyword.
+     * Note: Level filter has been removed per updated requirements.
      */
-    public List<Job> filterJobs(String keyword) {
-        if (keyword == null || keyword.trim().isEmpty()) {
-            return getAllJobs();
-        }
+    public List<Job> filterJobs(String module, String status, String keyword) {
         List<Job> filtered = new ArrayList<>();
+
         for (Job job : allJobs) {
-            // Simple implementation: matches only the title or module code
-            if (job.getTitle().toLowerCase().contains(keyword.toLowerCase()) ||
-                    job.getModule().toLowerCase().contains(keyword.toLowerCase())) {
+            boolean match = true;
+
+            // 1. Check Module filter
+            if (!"All".equals(module) && !job.getModule().equalsIgnoreCase(module)) {
+                match = false;
+            }
+
+            // 2. Check Status filter (Open Only vs Closed)
+            if (match && !"All".equals(status)) {
+                if ("Open Only".equals(status) && job.isExpired()) {
+                    match = false;
+                } else if ("Closed".equals(status) && !job.isExpired()) {
+                    match = false;
+                }
+            }
+
+            // 3. Check Keyword (searches title and responsibilities)
+            if (match && keyword != null && !keyword.trim().isEmpty()) {
+                String kw = keyword.toLowerCase().trim();
+                boolean titleMatch = job.getTitle().toLowerCase().contains(kw);
+                boolean respMatch = job.getResponsibilities().toLowerCase().contains(kw);
+
+                if (!titleMatch && !respMatch) {
+                    match = false;
+                }
+            }
+
+            if (match) {
                 filtered.add(job);
             }
         }

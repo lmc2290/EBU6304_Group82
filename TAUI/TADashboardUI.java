@@ -1,22 +1,24 @@
 package TAUI;
 
 import LoginPage.DashBoardUI;
-
 import javax.swing.*;
 import java.awt.*;
 import java.util.List;
 
 /**
  * Boundary Class - TA Dashboard
- * Uses JSplitPane to implement a left-right split Master-Detail view.
+ * Implements a Master-Detail view with advanced filtering capabilities.
  */
-
 public class TADashboardUI extends DashBoardUI {
 
     private TAController controller;
 
     // Left panel components (US-02 Browse and Filter)
+    // Declared as class members so their values can be retrieved during search
+    private JComboBox<String> moduleCombo;
+    private JComboBox<String> statusCombo;
     private JTextField searchField;
+
     private DefaultListModel<Job> listModel;
     private JList<Job> jobList;
 
@@ -24,22 +26,17 @@ public class TADashboardUI extends DashBoardUI {
     private JTextArea detailsArea;
     private JButton applyBtn;
 
-    /**
-     * Constructor now requires the User object to satisfy the DashBoardUI base class.
-     */
     public TADashboardUI(LoginPage.User user, TAController controller) {
-        super(user); // 1. Sets up the base JFrame and saves the currentUser
-        this.controller = controller; // 2. Safely assign the controller
-
-        initializeUI(); // 3. NOW it is safe to build the UI
+        super(user);
+        this.controller = controller;
+        initializeUI();
     }
 
     @Override
     protected void initializeUI() {
-        // Overwrite the default 600x500 size and title from the base class for TA specifics
         setTitle("Teaching Assistant Dashboard - Job Portal (" + currentUser.getId() + ")");
-        setSize(900, 600);
-        setLocationRelativeTo(null); // Re-center after resizing
+        setSize(950, 650);
+        setLocationRelativeTo(null);
 
         buildSplitPane();
         loadInitialData();
@@ -51,17 +48,26 @@ public class TADashboardUI extends DashBoardUI {
         // ==========================================
         JPanel leftPanel = new JPanel(new BorderLayout());
 
-        JPanel filterPanel = new JPanel(new GridLayout(4, 2, 5, 5));
+        // 4 rows to accommodate 2 dropdowns, 1 search field, and 1 row for buttons
+        JPanel filterPanel = new JPanel(new GridLayout(4, 2, 5, 8));
         filterPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
+        // Filter 1: Module
         filterPanel.add(new JLabel("Module:"));
-        filterPanel.add(new JComboBox<>(new String[]{"All", "ECS401", "ECS414", "ECS505"}));
-        filterPanel.add(new JLabel("Level:"));
-        filterPanel.add(new JComboBox<>(new String[]{"All", "Undergraduate", "Postgraduate"}));
+        moduleCombo = new JComboBox<>(new String[]{"All", "ECS401", "ECS414", "ECS505"});
+        filterPanel.add(moduleCombo);
+
+        // Filter 2: Status (Open or Closed)
+        filterPanel.add(new JLabel("Status:"));
+        statusCombo = new JComboBox<>(new String[]{"All", "Open Only", "Closed"});
+        filterPanel.add(statusCombo);
+
+        // Keyword Search
         filterPanel.add(new JLabel("Keyword:"));
         searchField = new JTextField();
         filterPanel.add(searchField);
 
+        // Buttons
         JButton searchBtn = new JButton("Search");
         JButton clearBtn = new JButton("Clear Filters");
         filterPanel.add(searchBtn);
@@ -81,22 +87,24 @@ public class TADashboardUI extends DashBoardUI {
         JPanel rightPanel = new JPanel(new BorderLayout());
         rightPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        detailsArea = new JTextArea("\n\n\n      Welcome, " + currentUser.getId() + ". Please select a job from the left list.");
+        // Default prompt text
+        detailsArea = new JTextArea("\n\n\n\n      Please select a job from the left panel to view details.");
         detailsArea.setEditable(false);
-        detailsArea.setFont(new Font("Arial", Font.PLAIN, 15));
+        detailsArea.setFont(new Font("Arial", Font.PLAIN, 16));
         detailsArea.setLineWrap(true);
         detailsArea.setWrapStyleWord(true);
         detailsArea.setBackground(new Color(245, 245, 245));
 
+        // Huge "Apply Now" button stretching across the bottom
         applyBtn = new JButton("Apply Now");
-        applyBtn.setFont(new Font("Arial", Font.BOLD, 18));
+        applyBtn.setFont(new Font("Arial", Font.BOLD, 24));
         applyBtn.setBackground(new Color(0, 153, 76));
         applyBtn.setForeground(Color.WHITE);
         applyBtn.setEnabled(false);
-        applyBtn.setPreferredSize(new Dimension(200, 50));
+        applyBtn.setPreferredSize(new Dimension(0, 65));
 
-        JPanel bottomPanel = new JPanel();
-        bottomPanel.add(applyBtn);
+        JPanel bottomPanel = new JPanel(new BorderLayout());
+        bottomPanel.add(applyBtn, BorderLayout.CENTER);
 
         rightPanel.add(new JScrollPane(detailsArea), BorderLayout.CENTER);
         rightPanel.add(bottomPanel, BorderLayout.SOUTH);
@@ -105,7 +113,7 @@ public class TADashboardUI extends DashBoardUI {
         // 3. Assemble the split panel (JSplitPane)
         // ==========================================
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightPanel);
-        splitPane.setDividerLocation(300);
+        splitPane.setDividerLocation(320);
         add(splitPane);
 
         // ==========================================
@@ -120,8 +128,19 @@ public class TADashboardUI extends DashBoardUI {
             }
         });
 
-        searchBtn.addActionListener(e -> updateList(controller.filterJobs(searchField.getText())));
+        // Pass selected filter values to the controller
+        searchBtn.addActionListener(e -> {
+            String mod = (String) moduleCombo.getSelectedItem();
+            String status = (String) statusCombo.getSelectedItem();
+            String kw = searchField.getText();
+
+            updateList(controller.filterJobs(mod, status, kw));
+        });
+
+        // Clear all inputs and reset to default
         clearBtn.addActionListener(e -> {
+            moduleCombo.setSelectedIndex(0);
+            statusCombo.setSelectedIndex(0);
             searchField.setText("");
             updateList(controller.getAllJobs());
         });
@@ -147,6 +166,7 @@ public class TADashboardUI extends DashBoardUI {
 
         detailsArea.setText(sb.toString());
 
+        // Change button state based on job expiration status
         if (job.isExpired()) {
             applyBtn.setText("Closed");
             applyBtn.setEnabled(false);
@@ -165,7 +185,7 @@ public class TADashboardUI extends DashBoardUI {
     private void updateList(List<Job> jobs) {
         listModel.clear();
         if (jobs.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "No matches found for the given criteria.");
+            JOptionPane.showMessageDialog(this, "No matches found for the given criteria.", "Information", JOptionPane.INFORMATION_MESSAGE);
         } else {
             for (Job job : jobs) {
                 listModel.addElement(job);
