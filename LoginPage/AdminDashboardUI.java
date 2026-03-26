@@ -1,7 +1,7 @@
 package LoginPage;
 
-import javax.swing.*;
 import java.awt.*;
+import javax.swing.*;
 
 public class AdminDashboardUI extends DashBoardUI {
     private CardLayout cardLayout;
@@ -62,5 +62,21 @@ public class AdminDashboardUI extends DashBoardUI {
         // ===================== 切换功能 =====================
         workloadBtn.addActionListener(e -> cardLayout.show(cardPanel, "WORKLOAD"));
         requestBtn.addActionListener(e -> cardLayout.show(cardPanel, "REQUEST"));
+        // 在 initializeUI 里的按钮部分
+
     }
-}
+    // ===================== 临时预览入口（测试用） =====================
+    // static void main(String[] args) {
+    //     User fakeAdmin = new User("admin", "123456");
+    //     fakeAdmin.setRole("Admin"); 
+        
+    //     AdminDashboardUI frame = new AdminDashboardUI(fakeAdmin);
+        
+    //    frame.setTitle("Admin Debug Mode");
+    //     frame.setSize(900, 700); // 设置一个合适的大小
+    //     frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    //     frame.setLocationRelativeTo(null); // 窗口居中
+    //     frame.setVisible(true); // 重点：让窗口显示出来
+    
+    }
+
