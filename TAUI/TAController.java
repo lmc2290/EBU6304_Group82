@@ -14,9 +14,19 @@ public class TAController {
     public TAController() {
         // Mock data simulating reads from a local file or database
         allJobs = new ArrayList<>();
-        allJobs.add(new Job("J01", "Java Lab Assistant", "ECS401", "10 hours/week", "£15/hr", "1:5", "Assist students with Java lab exercises and mark weekly assignments.", false));
-        allJobs.add(new Job("J02", "Python Tutor", "ECS414", "8 hours/week", "£16/hr", "1:3", "Hold tutorial sessions for basic Python programming.", false));
-        allJobs.add(new Job("J03", "Data Structure Grader", "ECS505", "15 hours/week", "£14/hr", "1:10", "Grade mid-term and final projects. (Deadline Passed)", true));
+
+        // [修改] 模拟数据中新增了两个字段：JobType (岗位类型) 和 RequiredSkill (技能要求)
+        allJobs.add(new Job("J01", "Java Lab Assistant", "ECS401", "10 hours/week", "£15/hr", "1:5",
+                "Assist students with Java lab exercises and mark weekly assignments.", false,
+                "Lab Assistant", "Java"));
+
+        allJobs.add(new Job("J02", "Python Tutor", "ECS414", "8 hours/week", "£16/hr", "1:3",
+                "Hold tutorial sessions for Python data modeling and machine learning basics.", false,
+                "Tutor", "Python"));
+
+        allJobs.add(new Job("J03", "Signal Processing Grader", "ECS505", "15 hours/week", "£14/hr", "1:10",
+                "Grade MATLAB scripts for communication systems and signal processing assignments. (Deadline Passed)", true,
+                "Grader", "MATLAB"));
     }
 
     /**
@@ -28,10 +38,9 @@ public class TAController {
 
     /**
      * US-02: Advanced job list filtering logic.
-     * Evaluates multiple conditions including dropdown selections and keyword.
-     * Note: Level filter has been removed per updated requirements.
+     * [修改] 接收 5 个参数，增加了 jobType 和 skills 的过滤逻辑。
      */
-    public List<Job> filterJobs(String module, String status, String keyword) {
+    public List<Job> filterJobs(String module, String status, String jobType, String skills, String keyword) {
         List<Job> filtered = new ArrayList<>();
 
         for (Job job : allJobs) {
@@ -51,7 +60,17 @@ public class TAController {
                 }
             }
 
-            // 3. Check Keyword (searches title and responsibilities)
+            // 3. [新增] Check Job Type filter
+            if (match && !"All".equals(jobType) && !job.getJobType().equalsIgnoreCase(jobType)) {
+                match = false;
+            }
+
+            // 4. [新增] Check Required Skills filter
+            if (match && !"All".equals(skills) && !job.getRequiredSkill().equalsIgnoreCase(skills)) {
+                match = false;
+            }
+
+            // 5. Check Keyword (searches title and responsibilities)
             if (match && keyword != null && !keyword.trim().isEmpty()) {
                 String kw = keyword.toLowerCase().trim();
                 boolean titleMatch = job.getTitle().toLowerCase().contains(kw);
