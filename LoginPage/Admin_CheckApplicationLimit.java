@@ -9,6 +9,10 @@ public class Admin_CheckApplicationLimit {
     public static Map<String, Integer> loadCourseLimits() {
         Map<String, Integer> map = new HashMap<>();
         File file = new File("course_limits.txt");
+        //File for setting the maximum number of TAs for each course.
+        //eg:CS101,3
+        //CS202,2
+        //CS303,5
 
         if (!file.exists()) return map;
 
