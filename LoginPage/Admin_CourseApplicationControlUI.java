@@ -85,9 +85,10 @@ public class Admin_CourseApplicationControlUI extends JPanel {
     }
 
     private void addMockData() {
-        tableModel.addRow(new Object[]{"CS101", "Java Basics", "Prof. Lee", "VIEW", "Pending"});
-        tableModel.addRow(new Object[]{"CS202", "Databases", "Dr. Wong", "VIEW", "Pending"});
-        tableModel.addRow(new Object[]{"CS303", "AI Intro", "Dr. Chen", "VIEW", "Approved"}); // 测试数据
+        List<Module> modules = MockDataManager.getAllModules();
+        for (Module module : modules) {
+            tableModel.addRow(new Object[]{module.getId(), module.getName(), module.getOrganiserId(), "VIEW", module.getStatus()});
+        }
     }
 
     // ===================== 核心组件：状态渲染器 =====================
@@ -141,6 +142,10 @@ public class Admin_CourseApplicationControlUI extends JPanel {
 
             appBtn.addActionListener(e -> {
                 currentStatus = "Approved";
+                // Update module status in MockDataManager
+                int row = requestTable.getEditingRow();
+                String moduleId = (String) requestTable.getValueAt(row, 0);
+                MockDataManager.updateModuleStatus(moduleId, "Approved");
                 fireEditingStopped(); // 停止编辑并触发模型更新
             });
 
@@ -148,6 +153,10 @@ public class Admin_CourseApplicationControlUI extends JPanel {
                 String reason = JOptionPane.showInputDialog(null, "Rejection Reason:", "Feedback", JOptionPane.PLAIN_MESSAGE);
                 if (reason != null && !reason.trim().isEmpty()) {
                     currentStatus = "Rejected: " + reason;
+                    // Update module status in MockDataManager
+                    int row = requestTable.getEditingRow();
+                    String moduleId = (String) requestTable.getValueAt(row, 0);
+                    MockDataManager.updateModuleStatus(moduleId, "Rejected");
                     fireEditingStopped();
                 } else {
                     cancelCellEditing(); // 没写理由不让拒绝
