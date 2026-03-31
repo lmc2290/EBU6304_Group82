@@ -49,7 +49,6 @@ public class MockDataManager {
     public static List<Module> getModules() {
         return modules;
     }
-
     public static void updateModuleStatus(String moduleName, String newStatus) {
         for (Module module : modules) {
             if (module.getModuleName().equals(moduleName)) {
