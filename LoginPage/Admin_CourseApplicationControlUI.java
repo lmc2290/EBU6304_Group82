@@ -85,9 +85,15 @@ public class Admin_CourseApplicationControlUI extends JPanel {
     }
 
     private void addMockData() {
-        List<Module> modules = MockDataManager.getAllModules();
+        List<Module> modules = MockDataManager.getModules();
         for (Module module : modules) {
-            tableModel.addRow(new Object[]{module.getId(), module.getName(), module.getOrganiserId(), "VIEW", module.getStatus()});
+            tableModel.addRow(new Object[]{
+                    module.getModuleName(),
+                    module.getResponsibilities(),
+                    module.getRequirements(),
+                    "VIEW",
+                    module.getStatus()
+            });
         }
     }
 
