@@ -20,23 +20,23 @@ public class LoginController {
      */
     public void authenticate(String idStr, String password) {
         // Form null/empty check
-        if (idStr.isEmpty() || password.isEmpty()) {
+        if (idStr == null || password == null || idStr.trim().isEmpty() || password.trim().isEmpty()) {
             loginUI.showError("Please enter both ID and Password!");
             return;
         }
 
         try {
-            int idNum = Integer.parseInt(idStr);
+            int idNum = Integer.parseInt(idStr.trim());
             User authenticatedUser;
 
-            // Identity verification logic & Entity creation -- detail can be changed
+            // Identity verification logic & Entity creation
             if (idNum == 0) {
                 authenticatedUser = new User(idStr, "Admin");
                 loginUI.showMessage("Admin identity detected. Routing to Admin Dashboard...");
                 routeToDashboard(authenticatedUser);
 
             } else if (idNum >= 1 && idNum <= 100) {
-                authenticatedUser = new User(idStr, "MO");
+                authenticatedUser = new User(idStr, "MO", "CS101");
                 loginUI.showMessage("MO identity detected. Routing to MO Dashboard...");
                 routeToDashboard(authenticatedUser);
 
@@ -48,6 +48,9 @@ public class LoginController {
 
         } catch (NumberFormatException ex) {
             loginUI.showError("ID must be a valid number!");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            loginUI.showError("Login failed: " + ex.getMessage());
         }
     }
 
@@ -73,6 +76,7 @@ public class LoginController {
                 break;
             default:
                 loginUI.showError("Unknown role detected.");
+                loginUI.setVisible(true);
                 return;
         }
 
