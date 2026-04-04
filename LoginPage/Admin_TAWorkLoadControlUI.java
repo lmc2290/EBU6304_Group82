@@ -228,8 +228,59 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         }
     }
 
+    // ===================== 完美统一的导出逻辑（和Request界面一样） =====================
     private void exportDataToCSV() {
-        JOptionPane.showMessageDialog(this, "Export function triggered!");
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Export to CSV");
+        fileChooser.setSelectedFile(new File("TA_Workload_" + System.currentTimeMillis() + ".csv"));
+        int userSelection = fileChooser.showSaveDialog(this);
+
+        if (userSelection != JFileChooser.APPROVE_OPTION) {
+            JOptionPane.showMessageDialog(this, "Export cancelled.");
+            return;
+        }
+
+        File fileToSave = fileChooser.getSelectedFile();
+        if (!fileToSave.getName().endsWith(".csv")) {
+            fileToSave = new File(fileToSave.getParentFile(), fileToSave.getName() + ".csv");
+        }
+
+        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileToSave), "UTF-8"))) {
+            DefaultTableModel model = (DefaultTableModel) taTable.getModel();
+            int columnCount = model.getColumnCount();
+
+            for (int i = 0; i < columnCount; i++) {
+                writer.write(escapeCsvValue(model.getColumnName(i)));
+                if (i < columnCount - 1) writer.write(",");
+            }
+            writer.newLine();
+
+            int rowCount = taTable.getRowCount();
+            for (int i = 0; i < rowCount; i++) {
+                int modelRow = taTable.convertRowIndexToModel(i);
+                for (int j = 0; j < columnCount; j++) {
+                    Object val = model.getValueAt(modelRow, j);
+                    String cell = val == null ? "" : val.toString();
+                    writer.write(escapeCsvValue(cell));
+                    if (j < columnCount - 1) writer.write(",");
+                }
+                writer.newLine();
+            }
+
+            JOptionPane.showMessageDialog(this, "Export successful!\nSaved to: " + fileToSave.getAbsolutePath());
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Export failed: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private String escapeCsvValue(String value) {
+        if (value.startsWith("=") || value.startsWith("+") || value.startsWith("-") || value.startsWith("@")) {
+            value = "'" + value;
+        }
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            value = "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
     }
 
     private void addMockData() {
