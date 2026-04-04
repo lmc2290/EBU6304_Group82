@@ -13,7 +13,6 @@ public class Admin_CourseApplicationControlUI extends JPanel {
     private DefaultTableModel tableModel;
     private TableRowSorter<DefaultTableModel> sorter;
 
-    // 配色与样式保持一致
     private final Color SUCCESS_GREEN = new Color(46, 204, 113);
     private final Color DANGER_RED = new Color(231, 76, 60);
     private final Color BG_LIGHT = new Color(245, 247, 250);
@@ -23,28 +22,24 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         this.setLayout(new BorderLayout(0, 20));
         this.setBackground(BG_LIGHT);
         this.setBorder(new EmptyBorder(30, 40, 30, 40));
-        
+
         initializeUI();
         addMockData();
     }
 
     private void initializeUI() {
-        // --- 顶部标题 ---
         JLabel title = new JLabel("Module Posting Approval");
         title.setFont(new Font("Segoe UI", Font.BOLD, 28));
         add(title, BorderLayout.NORTH);
 
-        // --- 表格设置 ---
-        // 列：ID, Name, MO, Content, Status/Actions (关键)
         String[] columnNames = {"ID", "Module Name", "Organiser", "Content", "Status & Actions"};
         tableModel = new DefaultTableModel(columnNames, 0) {
-            @Override public boolean isCellEditable(int r, int c) { 
-                // 只有当状态是 "Pending" 且是最后一列时才可点
+            @Override public boolean isCellEditable(int r, int c) {
                 String status = getValueAt(r, 4).toString();
-                return c == 4 && status.equals("Pending"); 
+                return c == 4 && status.equals("Pending");
             }
         };
-        
+
         requestTable = new JTable(tableModel);
         setupTableLogic();
 
@@ -59,27 +54,23 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         requestTable.setShowVerticalLines(false);
         requestTable.setIntercellSpacing(new Dimension(0, 0));
 
-        // 1. 设置排序规则：Pending 在上，Approved/Rejected 在下
         sorter = new TableRowSorter<>(tableModel);
         requestTable.setRowSorter(sorter);
-        
-        // 自定义比较器：让 "Pending" 永远排在最前面
+
         sorter.setComparator(4, new Comparator<String>() {
             @Override
             public int compare(String s1, String s2) {
                 if (s1.equals(s2)) return 0;
-                if (s1.equals("Pending")) return -1; // s1排前面
-                if (s2.equals("Pending")) return 1;  // s2排前面
+                if (s1.equals("Pending")) return -1;
+                if (s2.equals("Pending")) return 1;
                 return s1.compareTo(s2);
             }
         });
-        
-        // 默认按状态列升序（即Pending排第一）
+
         List<RowSorter.SortKey> sortKeys = new ArrayList<>();
         sortKeys.add(new RowSorter.SortKey(4, SortOrder.ASCENDING));
         sorter.setSortKeys(sortKeys);
 
-        // 2. 设置渲染器：根据状态显示按钮或文字
         requestTable.getColumnModel().getColumn(4).setCellRenderer(new StatusActionRenderer());
         requestTable.getColumnModel().getColumn(4).setCellEditor(new StatusActionEditor());
     }
@@ -87,24 +78,22 @@ public class Admin_CourseApplicationControlUI extends JPanel {
     private void addMockData() {
         tableModel.addRow(new Object[]{"CS101", "Java Basics", "Prof. Lee", "VIEW", "Pending"});
         tableModel.addRow(new Object[]{"CS202", "Databases", "Dr. Wong", "VIEW", "Pending"});
-        tableModel.addRow(new Object[]{"CS303", "AI Intro", "Dr. Chen", "VIEW", "Approved"}); // 测试数据
+        tableModel.addRow(new Object[]{"CS303", "AI Intro", "Dr. Chen", "VIEW", "Approved"});
     }
 
-    // ===================== 核心组件：状态渲染器 =====================
-    
     class StatusActionRenderer extends JPanel implements TableCellRenderer {
         private JLabel statusLabel = new JLabel("", SwingConstants.CENTER);
-        private JPanel btnPanel = new JPanel(new GridLayout(1, 2, 8, 0)); // 解决黑块/换行：GridLayout
+        private JPanel btnPanel = new JPanel(new GridLayout(1, 2, 8, 0));
 
         public StatusActionRenderer() {
             setLayout(new BorderLayout());
             setBorder(new EmptyBorder(12, 10, 12, 10));
             setOpaque(true);
-            
+
             btnPanel.setOpaque(false);
             btnPanel.add(createSmallButton("Approve", SUCCESS_GREEN));
             btnPanel.add(createSmallButton("Reject", DANGER_RED));
-            
+
             statusLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
         }
 
@@ -112,7 +101,7 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         public Component getTableCellRendererComponent(JTable t, Object v, boolean isS, boolean hasF, int r, int c) {
             String status = v.toString();
             setBackground(isS ? t.getSelectionBackground() : Color.WHITE);
-            
+
             removeAll();
             if (status.equals("Pending")) {
                 add(btnPanel, BorderLayout.CENTER);
@@ -124,8 +113,6 @@ public class Admin_CourseApplicationControlUI extends JPanel {
             return this;
         }
     }
-
-    // ===================== 核心组件：状态编辑器（处理点击） =====================
 
     class StatusActionEditor extends DefaultCellEditor {
         private JPanel panel;
@@ -141,7 +128,7 @@ public class Admin_CourseApplicationControlUI extends JPanel {
 
             appBtn.addActionListener(e -> {
                 currentStatus = "Approved";
-                fireEditingStopped(); // 停止编辑并触发模型更新
+                fireEditingStopped();
             });
 
             rejBtn.addActionListener(e -> {
@@ -150,7 +137,7 @@ public class Admin_CourseApplicationControlUI extends JPanel {
                     currentStatus = "Rejected: " + reason;
                     fireEditingStopped();
                 } else {
-                    cancelCellEditing(); // 没写理由不让拒绝
+                    cancelCellEditing();
                 }
             });
 
@@ -162,7 +149,7 @@ public class Admin_CourseApplicationControlUI extends JPanel {
             panel.setBackground(t.getSelectionBackground());
             return panel;
         }
-        
+
         @Override public Object getCellEditorValue() { return currentStatus; }
     }
 
