@@ -61,41 +61,77 @@ public class TAController {
     }
 
     // ==========================================
-    // US-03: CV Management Logic (New Methods)
+    // US-03: CV Management Logic
     // ==========================================
 
-    public List<String> getUploadedCVs() {
+    public java.util.List<String> getUploadedCVs() {
         return uploadedCVs;
     }
 
-    /**
-     * Validates and processes the CV upload.
-     * Returns an error message if invalid, or null if successful.
-     */
     public String uploadCV(File file) {
-        // US-03 AC2: Enforce file size limit (e.g., Max 5MB)
+        // AC2: Enforce file size limit
+        // [Intentional Bug 1: Integer division]
+        // file.length() returns bytes. Integer division for MB conversion makes a 5.9MB
+        // file appear as 5MB, which accidentally bypasses the size limit restriction.
         long fileSizeInMB = file.length() / (1024 * 1024);
         if (fileSizeInMB > 5) {
             return "File size exceeds the 5MB limit.";
         }
 
-        // US-03 AC1: Accept standard file formats
+        // AC1: Enforce file format
         String fileName = file.getName().toLowerCase();
         if (!fileName.endsWith(".pdf") && !fileName.endsWith(".docx")) {
             return "Invalid format. Only .pdf and .docx are allowed.";
         }
 
-        // Prevent duplicate names
-        if (uploadedCVs.contains(file.getName())) {
-            return "A CV with this name already exists.";
-        }
+        // Core change: Implement actual local file storage
+        try {
+            // Create a directory in the project root to store uploaded CVs
+            File targetDir = new File("uploaded_cvs");
+            if (!targetDir.exists()) {
+                targetDir.mkdirs(); // Create the directory if it doesn't exist
+            }
 
-        // Simulate saving the file
-        uploadedCVs.add(file.getName());
-        return null; // Return null indicates success
+            // Target file path
+            File targetFile = new File(targetDir, file.getName());
+
+            // [Intentional Bug 2: File overwrite issue]
+            // If two different users upload a file named "resume.pdf",
+            // the later upload will silently overwrite the previous one!
+            java.nio.file.Files.copy(file.toPath(), targetFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+            // Add to the current list for UI display
+            if (!uploadedCVs.contains(file.getName())) {
+                uploadedCVs.add(file.getName());
+            }
+            return null; // Return null to indicate success
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "System Error: Failed to save file.";
+        }
     }
 
     public boolean deleteCV(String fileName) {
+        // Step 1: Physical deletion from the local file system
+        try {
+            File targetDir = new File("uploaded_cvs");
+            File fileToDelete = new File(targetDir, fileName);
+
+            if (fileToDelete.exists()) {
+                boolean deleted = fileToDelete.delete();
+                if (!deleted) {
+                    System.err.println("Failed to delete physical file: " + fileName);
+                    // Even if physical delete fails, we might still want to proceed
+                    // or return false based on your error handling strategy.
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+
+        // Step 2: Logical deletion from the internal list (Update UI)
         return uploadedCVs.remove(fileName);
     }
 
