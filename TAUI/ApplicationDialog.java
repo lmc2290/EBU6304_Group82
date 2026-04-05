@@ -13,8 +13,6 @@ public class ApplicationDialog extends JDialog {
     private Job targetJob;
 
     public ApplicationDialog(JFrame parent, TAController controller, Job targetJob) {
-        // The 'true' parameter indicates this is a modal window;
-        // the main interface cannot be clicked until this is closed
         super(parent, "Submit Application - " + targetJob.getTitle(), true);
         this.controller = controller;
         this.targetJob = targetJob;
@@ -24,22 +22,28 @@ public class ApplicationDialog extends JDialog {
 
     private void initUI() {
         setSize(450, 350);
-        setLocationRelativeTo(getParent()); // Center relative to the parent window
+        setLocationRelativeTo(getParent());
         setLayout(new BorderLayout());
 
         JPanel formPanel = new JPanel(new BorderLayout(5, 15));
         formPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        // 1. Select CV dropdown (US-06 Requirement 1)
+        // 1. Select CV dropdown (Dynamic Loading)
         JPanel cvPanel = new JPanel(new BorderLayout());
         cvPanel.add(new JLabel("Select Uploaded CV: "), BorderLayout.NORTH);
-        JComboBox<String> cvDropdown = new JComboBox<>(new String[]{
-                "CV_Software_Engineering_v1.pdf",
-                "CV_Updated_2026.pdf"
-        });
+
+        // [修改] 动态从 Controller 获取简历列表
+        java.util.List<String> cvs = controller.getUploadedCVs();
+        JComboBox<String> cvDropdown = new JComboBox<>(cvs.toArray(new String[0]));
+
+        // [新增] 如果没有简历的提示与保护逻辑
+        if (cvs.isEmpty()) {
+            cvDropdown.addItem("No CV found! Please use 'Manage My CVs' first.");
+            cvDropdown.setEnabled(false);
+        }
         cvPanel.add(cvDropdown, BorderLayout.CENTER);
 
-        // 2. Cover letter text area (US-06 Requirement 1)
+        // 2. Cover letter text area
         JPanel clPanel = new JPanel(new BorderLayout());
         clPanel.add(new JLabel("Cover Letter (Optional):"), BorderLayout.NORTH);
         JTextArea coverLetterArea = new JTextArea();
@@ -55,18 +59,22 @@ public class ApplicationDialog extends JDialog {
         submitBtn.setBackground(new Color(0, 102, 204));
         submitBtn.setForeground(Color.WHITE);
 
+        // [新增] 禁用提交按钮如果没有简历
+        if (cvs.isEmpty()) {
+            submitBtn.setEnabled(false);
+        }
+
         submitBtn.addActionListener(e -> {
             String selectedCV = (String) cvDropdown.getSelectedItem();
             String coverLetter = coverLetterArea.getText();
 
-            // Pass the input data to the Controller for processing
             boolean success = controller.submitApplication(targetJob, selectedCV, coverLetter);
 
             if (success) {
                 JOptionPane.showMessageDialog(this,
                         "Application submitted successfully!\nAn email confirmation has been sent.",
                         "Success", JOptionPane.INFORMATION_MESSAGE);
-                dispose(); // Automatically close the dialog after a successful submission
+                dispose();
             }
         });
 
