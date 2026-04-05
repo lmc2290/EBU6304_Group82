@@ -11,8 +11,7 @@ import java.util.List;
 public class TAController {
 
     private List<Job> allJobs;
-    // [新增] 用于存储已上传简历文件名的列表
-    private List<String> uploadedCVs;
+    private List<CVRecord> uploadedCVs;
 
     public TAController() {
         allJobs = new ArrayList<>();
@@ -64,47 +63,47 @@ public class TAController {
     // US-03: CV Management Logic
     // ==========================================
 
-    public java.util.List<String> getUploadedCVs() {
+    public List<CVRecord> getUploadedCVs() {
         return uploadedCVs;
     }
 
     public String uploadCV(File file) {
-        // AC2: Enforce file size limit
-        // [Intentional Bug 1: Integer division]
-        // file.length() returns bytes. Integer division for MB conversion makes a 5.9MB
-        // file appear as 5MB, which accidentally bypasses the size limit restriction.
-        long fileSizeInMB = file.length() / (1024 * 1024);
-        if (fileSizeInMB > 5) {
+        // 【修复 Bug 1】：抛弃整数除法，直接使用 Byte 进行精确比较 (5 * 1024 * 1024 bytes)
+        if (file.length() > 5 * 1024 * 1024) {
             return "File size exceeds the 5MB limit.";
         }
 
-        // AC1: Enforce file format
-        String fileName = file.getName().toLowerCase();
-        if (!fileName.endsWith(".pdf") && !fileName.endsWith(".docx")) {
+        String originalName = file.getName();
+        String lowerName = originalName.toLowerCase();
+        if (!lowerName.endsWith(".pdf") && !lowerName.endsWith(".docx")) {
             return "Invalid format. Only .pdf and .docx are allowed.";
         }
 
-        // Core change: Implement actual local file storage
+        // 检查逻辑列表中是否已经有同名的简历 (防止 UI 上出现两个一样的名字)
+        for (CVRecord cv : uploadedCVs) {
+            if (cv.getOriginalName().equals(originalName)) {
+                return "A CV with this name already exists in your list.";
+            }
+        }
+
         try {
-            // Create a directory in the project root to store uploaded CVs
             File targetDir = new File("uploaded_cvs");
             if (!targetDir.exists()) {
-                targetDir.mkdirs(); // Create the directory if it doesn't exist
+                targetDir.mkdirs();
             }
 
-            // Target file path
-            File targetFile = new File(targetDir, file.getName());
+            // 【修复 Bug 2】：给物理文件加上时间戳，保证绝对唯一
+            String extension = originalName.substring(originalName.lastIndexOf("."));
+            String baseName = originalName.substring(0, originalName.lastIndexOf("."));
+            String storedName = baseName + "_" + System.currentTimeMillis() + extension;
 
-            // [Intentional Bug 2: File overwrite issue]
-            // If two different users upload a file named "resume.pdf",
-            // the later upload will silently overwrite the previous one!
+            File targetFile = new File(targetDir, storedName);
+
             java.nio.file.Files.copy(file.toPath(), targetFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 
-            // Add to the current list for UI display
-            if (!uploadedCVs.contains(file.getName())) {
-                uploadedCVs.add(file.getName());
-            }
-            return null; // Return null to indicate success
+            // 【架构升级】：不再存简单的 String，而是存入 CVRecord 对象
+            uploadedCVs.add(new CVRecord(originalName, storedName));
+            return null;
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -112,18 +111,18 @@ public class TAController {
         }
     }
 
-    public boolean deleteCV(String fileName) {
-        // Step 1: Physical deletion from the local file system
+    public boolean deleteCV(CVRecord cvRecord) {
+        if (cvRecord == null) return false;
+
         try {
             File targetDir = new File("uploaded_cvs");
-            File fileToDelete = new File(targetDir, fileName);
+            // 【关键】：去硬盘删除时，使用带时间戳的 storedName！
+            File fileToDelete = new File(targetDir, cvRecord.getStoredName());
 
             if (fileToDelete.exists()) {
                 boolean deleted = fileToDelete.delete();
                 if (!deleted) {
-                    System.err.println("Failed to delete physical file: " + fileName);
-                    // Even if physical delete fails, we might still want to proceed
-                    // or return false based on your error handling strategy.
+                    System.err.println("Failed to delete physical file: " + cvRecord.getStoredName());
                 }
             }
         } catch (Exception e) {
@@ -131,8 +130,8 @@ public class TAController {
             return false;
         }
 
-        // Step 2: Logical deletion from the internal list (Update UI)
-        return uploadedCVs.remove(fileName);
+        // 内存列表中移除对象
+        return uploadedCVs.remove(cvRecord);
     }
 
     // ==========================================
