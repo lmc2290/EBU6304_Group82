@@ -8,6 +8,7 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.*;
 
+
 public class Admin_TAWorkLoadControlUI extends JPanel {
     private final User currentUser;
     private JLabel currentLimitLabel;
@@ -27,7 +28,11 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
     private final Color TEXT_DARK = new Color(44, 62, 80);
     private final Font MAIN_FONT = new Font("Segoe UI", Font.PLAIN, 15);
     private final Font HEADER_FONT = new Font("Segoe UI", Font.BOLD, 18);
-
+    
+    // File path for limit config
+     private final String LIMIT_FILE = "course_limits.txt";
+    // File path for TA data
+     private final String TA_DATA_FILE = "ta_list.csv";
     public Admin_TAWorkLoadControlUI(User user) {
         this.currentUser = user;
         this.setLayout(new BorderLayout(0, 20));
@@ -162,6 +167,8 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         bottomPanel.add(actionPanel, BorderLayout.EAST);
 
         add(bottomPanel, BorderLayout.SOUTH);
+        // Load data from file when starting
+        loadTAData();
     }
 
     private JButton createStyledButton(String text, Color bg, boolean isPrimary) {
@@ -282,6 +289,7 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         }
         return value;
     }
+ 
 
     private void addMockData() {
         tableModel.addRow(new Object[]{"ID-901", "Alice Johnson", "3", "5", "alice.j@uni.edu"});
@@ -289,4 +297,18 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         tableModel.addRow(new Object[]{"ID-553", "Charlie Brown", "1", "4", "charlie@uni.edu"});
         tableModel.addRow(new Object[]{"ID-104", "David Wilson", "2", "1", "d.wilson@uni.edu"});
     }
+    
+    // Read TA data from CSV to table
+private void loadTAData() {
+    tableModel.setRowCount(0);
+    try (BufferedReader br = new BufferedReader(new FileReader(TA_DATA_FILE))) {
+        String line;
+        while ((line = br.readLine()) != null) {
+            tableModel.addRow(line.split(","));
+        }
+    } catch (IOException e) {
+        System.out.println("Data file not found.");
+    }
+}
+
 }
