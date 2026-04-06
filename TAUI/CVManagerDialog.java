@@ -13,8 +13,8 @@ import java.io.File;
 public class CVManagerDialog extends JDialog {
 
     private TAController controller;
-    private DefaultListModel<String> cvListModel;
-    private JList<String> cvList;
+    private DefaultListModel<CVRecord> cvListModel;
+    private JList<CVRecord> cvList;
 
     public CVManagerDialog(JFrame parent, TAController controller) {
         super(parent, "Manage My CVs", true); // 'true' makes it a modal dialog
@@ -57,7 +57,7 @@ public class CVManagerDialog extends JDialog {
         uploadBtn.addActionListener(e -> handleUpload());
 
         deleteBtn.addActionListener(e -> {
-            String selectedCV = cvList.getSelectedValue();
+            CVRecord selectedCV = cvList.getSelectedValue();
             if (selectedCV != null) {
                 int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete '" + selectedCV + "'?", "Confirm", JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
@@ -98,7 +98,7 @@ public class CVManagerDialog extends JDialog {
 
     private void refreshCVList() {
         cvListModel.clear();
-        for (String cv : controller.getUploadedCVs()) {
+        for (CVRecord cv : controller.getUploadedCVs()) {
             cvListModel.addElement(cv);
         }
     }

@@ -33,12 +33,12 @@ public class ApplicationDialog extends JDialog {
         cvPanel.add(new JLabel("Select Uploaded CV: "), BorderLayout.NORTH);
 
         // [修改] 动态从 Controller 获取简历列表
-        java.util.List<String> cvs = controller.getUploadedCVs();
-        JComboBox<String> cvDropdown = new JComboBox<>(cvs.toArray(new String[0]));
+        java.util.List<CVRecord> cvs = controller.getUploadedCVs();
+        JComboBox<CVRecord> cvDropdown = new JComboBox<>(cvs.toArray(new CVRecord[0]));
 
         // [新增] 如果没有简历的提示与保护逻辑
         if (cvs.isEmpty()) {
-            cvDropdown.addItem("No CV found! Please use 'Manage My CVs' first.");
+            cvDropdown.addItem(new CVRecord("No CV found! Please manage CVs first.", ""));
             cvDropdown.setEnabled(false);
         }
         cvPanel.add(cvDropdown, BorderLayout.CENTER);
