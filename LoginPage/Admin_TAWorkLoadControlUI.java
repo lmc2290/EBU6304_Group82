@@ -7,6 +7,7 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.*;
 
+// TA Workload Management Panel for Admin
 public class Admin_TAWorkLoadControlUI extends JPanel {
     private final User currentUser;
     private JLabel currentLimitLabel;
@@ -14,6 +15,7 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
     private DefaultTableModel tableModel;
     private int currentLimit = 3;
 
+    // UI Style Constants
     private final Color PRIMARY_BLUE = new Color(41, 128, 185);
     private final Color DANGER_RED = new Color(231, 76, 60);
     private final Color BG_LIGHT = new Color(245, 247, 250);
@@ -31,7 +33,9 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         addMockData();
     }
 
+    // Initialize all UI components
     private void initializeUI() {
+        // Header panel with title
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setOpaque(false);
 
@@ -47,12 +51,14 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
 
         add(headerPanel, BorderLayout.NORTH);
 
+        // Table setup
         String[] columnNames = {"ID", "Name", "Workload (Hrs)", "Contact Email"};
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
         taTable = new JTable(tableModel);
 
+        // Table styling
         taTable.setRowHeight(45);
         taTable.setFont(MAIN_FONT);
         taTable.setShowVerticalLines(false);
@@ -61,6 +67,7 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         taTable.setSelectionForeground(TEXT_DARK);
         taTable.setIntercellSpacing(new Dimension(0, 0));
 
+        // Table header styling
         JTableHeader header = taTable.getTableHeader();
         header.setFont(HEADER_FONT);
         header.setBackground(Color.WHITE);
@@ -70,15 +77,18 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
 
         setupTableLogic();
 
+        // Scroll pane for table
         JScrollPane scrollPane = new JScrollPane(taTable);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         scrollPane.getViewport().setBackground(Color.WHITE);
         add(scrollPane, BorderLayout.CENTER);
 
+        // Bottom control panel
         JPanel bottomPanel = new JPanel(new BorderLayout());
         bottomPanel.setOpaque(false);
         bottomPanel.setPreferredSize(new Dimension(0, 80));
 
+        // Limit control section
         JPanel limitPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 20));
         limitPanel.setOpaque(false);
 
@@ -96,6 +106,7 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         limitPanel.add(limitField);
         limitPanel.add(setBtn);
 
+        // Export button section
         JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 20));
         actionPanel.setOpaque(false);
         JButton exportBtn = createStyledButton("Export Excel (CSV)", new Color(46, 204, 113), true);
@@ -108,6 +119,7 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         add(bottomPanel, BorderLayout.SOUTH);
     }
 
+    // Create consistent styled buttons
     private JButton createStyledButton(String text, Color bg, boolean isPrimary) {
         JButton btn = new JButton(text);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
@@ -120,13 +132,16 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         return btn;
     }
 
+    // Configure table sorting and highlight logic
     private void setupTableLogic() {
+        // Sort by workload hours descending
         TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
         taTable.setRowSorter(sorter);
         List<RowSorter.SortKey> keys = new ArrayList<>();
         keys.add(new RowSorter.SortKey(2, SortOrder.DESCENDING));
         sorter.setSortKeys(keys);
 
+        // Highlight overload entries in red
         taTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable t, Object v, boolean isS, boolean hasF, int r, int c) {
@@ -150,6 +165,7 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         });
     }
 
+    // Update workload limit value
     private void updateLimit(String input) {
         try {
             currentLimit = Integer.parseInt(input.trim());
@@ -160,10 +176,12 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         }
     }
 
+    // Placeholder for CSV export function
     private void exportDataToCSV() {
         JOptionPane.showMessageDialog(this, "Export function triggered!");
     }
 
+    // Add test data to table
     private void addMockData() {
         tableModel.addRow(new Object[]{"ID-901", "Alice Johnson", "5", "alice.j@uni.edu"});
         tableModel.addRow(new Object[]{"ID-722", "Bob Smith", "2", "b.smith@uni.edu"});
