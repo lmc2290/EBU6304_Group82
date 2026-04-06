@@ -2,7 +2,9 @@ package TAUI;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Control Class
@@ -11,7 +13,10 @@ import java.util.List;
 public class TAController {
 
     private List<Job> allJobs;
-    private List<CVRecord> uploadedCVs;
+
+    // [Feature]: Data Isolation.
+    // Use a Map to bind CV lists to specific User IDs. Key: userId, Value: List of CVRecords.
+    private Map<String, List<CVRecord>> userCVsMap;
 
     public TAController() {
         allJobs = new ArrayList<>();
@@ -28,8 +33,8 @@ public class TAController {
                 "Grade MATLAB scripts for communication systems and signal processing assignments. (Deadline Passed)", true,
                 "Grader", "MATLAB"));
 
-        // [新增] 初始化简历列表
-        uploadedCVs = new ArrayList<>();
+        // Initialize the Map
+        userCVsMap = new HashMap<>();
     }
 
     public List<Job> getAllJobs() {
@@ -60,15 +65,18 @@ public class TAController {
     }
 
     // ==========================================
-    // US-03: CV Management Logic
+    // US-03: CV Management Logic (User Isolated)
     // ==========================================
 
-    public List<CVRecord> getUploadedCVs() {
-        return uploadedCVs;
+    /**
+     * Retrieves the CV list for a specific user.
+     * Creates an empty list if the user has no uploaded CVs yet.
+     */
+    public List<CVRecord> getUploadedCVs(String userId) {
+        return userCVsMap.computeIfAbsent(userId, k -> new ArrayList<>());
     }
 
-    public String uploadCV(File file) {
-        // 【修复 Bug 1】：抛弃整数除法，直接使用 Byte 进行精确比较 (5 * 1024 * 1024 bytes)
+    public String uploadCV(String userId, File file) {
         if (file.length() > 5 * 1024 * 1024) {
             return "File size exceeds the 5MB limit.";
         }
@@ -79,8 +87,11 @@ public class TAController {
             return "Invalid format. Only .pdf and .docx are allowed.";
         }
 
-        // 检查逻辑列表中是否已经有同名的简历 (防止 UI 上出现两个一样的名字)
-        for (CVRecord cv : uploadedCVs) {
+        // Get the specific CV list for the current logged-in user
+        List<CVRecord> myCVs = getUploadedCVs(userId);
+
+        // Check for duplicates within this user's list
+        for (CVRecord cv : myCVs) {
             if (cv.getOriginalName().equals(originalName)) {
                 return "A CV with this name already exists in your list.";
             }
@@ -92,7 +103,6 @@ public class TAController {
                 targetDir.mkdirs();
             }
 
-            // 【修复 Bug 2】：给物理文件加上时间戳，保证绝对唯一
             String extension = originalName.substring(originalName.lastIndexOf("."));
             String baseName = originalName.substring(0, originalName.lastIndexOf("."));
             String storedName = baseName + "_" + System.currentTimeMillis() + extension;
@@ -101,8 +111,8 @@ public class TAController {
 
             java.nio.file.Files.copy(file.toPath(), targetFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 
-            // 【架构升级】：不再存简单的 String，而是存入 CVRecord 对象
-            uploadedCVs.add(new CVRecord(originalName, storedName));
+            // Add the CV record to the specific user's list
+            myCVs.add(new CVRecord(originalName, storedName));
             return null;
 
         } catch (Exception e) {
@@ -111,12 +121,11 @@ public class TAController {
         }
     }
 
-    public boolean deleteCV(CVRecord cvRecord) {
+    public boolean deleteCV(String userId, CVRecord cvRecord) {
         if (cvRecord == null) return false;
 
         try {
             File targetDir = new File("uploaded_cvs");
-            // 【关键】：去硬盘删除时，使用带时间戳的 storedName！
             File fileToDelete = new File(targetDir, cvRecord.getStoredName());
 
             if (fileToDelete.exists()) {
@@ -130,8 +139,9 @@ public class TAController {
             return false;
         }
 
-        // 内存列表中移除对象
-        return uploadedCVs.remove(cvRecord);
+        // Remove from the specific user's list
+        List<CVRecord> myCVs = getUploadedCVs(userId);
+        return myCVs.remove(cvRecord);
     }
 
     // ==========================================

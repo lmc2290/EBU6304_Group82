@@ -11,11 +11,13 @@ public class ApplicationDialog extends JDialog {
 
     private TAController controller;
     private Job targetJob;
+    private String userId; // [Feature]: Added to fetch user-specific CVs
 
-    public ApplicationDialog(JFrame parent, TAController controller, Job targetJob) {
+    public ApplicationDialog(JFrame parent, TAController controller, Job targetJob, String userId) {
         super(parent, "Submit Application - " + targetJob.getTitle(), true);
         this.controller = controller;
         this.targetJob = targetJob;
+        this.userId = userId;
 
         initUI();
     }
@@ -32,11 +34,10 @@ public class ApplicationDialog extends JDialog {
         JPanel cvPanel = new JPanel(new BorderLayout());
         cvPanel.add(new JLabel("Select Uploaded CV: "), BorderLayout.NORTH);
 
-        // [修改] 动态从 Controller 获取简历列表
-        java.util.List<CVRecord> cvs = controller.getUploadedCVs();
+        // Fetch CVs specifically for this user
+        java.util.List<CVRecord> cvs = controller.getUploadedCVs(userId);
         JComboBox<CVRecord> cvDropdown = new JComboBox<>(cvs.toArray(new CVRecord[0]));
 
-        // [新增] 如果没有简历的提示与保护逻辑
         if (cvs.isEmpty()) {
             cvDropdown.addItem(new CVRecord("No CV found! Please manage CVs first.", ""));
             cvDropdown.setEnabled(false);
@@ -45,7 +46,7 @@ public class ApplicationDialog extends JDialog {
 
         // 2. Cover letter text area
         JPanel clPanel = new JPanel(new BorderLayout());
-        clPanel.add(new JLabel("Cover Letter (Optional):"), BorderLayout.NORTH);
+        clPanel.add(new JLabel("Cover Letter (Optional, Max 1000 chars):"), BorderLayout.NORTH);
         JTextArea coverLetterArea = new JTextArea();
         coverLetterArea.setLineWrap(true);
         clPanel.add(new JScrollPane(coverLetterArea), BorderLayout.CENTER);
@@ -59,16 +60,32 @@ public class ApplicationDialog extends JDialog {
         submitBtn.setBackground(new Color(0, 102, 204));
         submitBtn.setForeground(Color.WHITE);
 
-        // [新增] 禁用提交按钮如果没有简历
         if (cvs.isEmpty()) {
             submitBtn.setEnabled(false);
         }
 
         submitBtn.addActionListener(e -> {
-            String selectedCV = (String) cvDropdown.getSelectedItem();
+            // [Fix]: Resolve ClassCastException caused by previous refactoring
+            CVRecord selectedCVRecord = (CVRecord) cvDropdown.getSelectedItem();
+
+            // Defensive programming: prevent submission with empty or invalid CV
+            if (selectedCVRecord == null || selectedCVRecord.getOriginalName().startsWith("No CV")) {
+                JOptionPane.showMessageDialog(this, "Please select a valid CV.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            String selectedCVName = selectedCVRecord.getOriginalName();
             String coverLetter = coverLetterArea.getText();
 
-            boolean success = controller.submitApplication(targetJob, selectedCV, coverLetter);
+            // [Feature]: Robustness check for cover letter length
+            if (coverLetter.length() > 1000) {
+                JOptionPane.showMessageDialog(this,
+                        "Cover letter is too long (Max 1000 characters).",
+                        "Warning", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            boolean success = controller.submitApplication(targetJob, selectedCVName, coverLetter);
 
             if (success) {
                 JOptionPane.showMessageDialog(this,
