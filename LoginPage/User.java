@@ -1,11 +1,5 @@
 package LoginPage;
 
-/**
- * Entity Class
- * Represents the core data object for a system user.
- */
-
-
 public class User {
     private String id;
     private String role;
