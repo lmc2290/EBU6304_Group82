@@ -88,6 +88,16 @@ public class Admin_CourseApplicationControlUI extends JPanel {
 
     // Add sample test data
     private void addMockData() {
+        List<Module> modules = MockDataManager.getModules();
+        for (Module module : modules) {
+            tableModel.addRow(new Object[]{
+                    module.getModuleName(),
+                    module.getResponsibilities(),
+                    module.getRequirements(),
+                    "VIEW",
+                    module.getStatus()
+            });
+        }
         tableModel.addRow(new Object[]{"CS101", "Java Basics", "Prof. Lee", "VIEW", "Pending"});
         tableModel.addRow(new Object[]{"CS202", "Databases", "Dr. Wong", "VIEW", "Pending"});
         tableModel.addRow(new Object[]{"CS303", "AI Intro", "Dr. Chen", "VIEW", "Approved"});
@@ -143,6 +153,11 @@ public class Admin_CourseApplicationControlUI extends JPanel {
             // Approve action
             appBtn.addActionListener(e -> {
                 currentStatus = "Approved";
+                // Update module status in MockDataManager
+                int row = requestTable.getEditingRow();
+                String moduleId = (String) requestTable.getValueAt(row, 0);
+                MockDataManager.updateModuleStatus(moduleId, "Approved");
+                fireEditingStopped(); 
                 fireEditingStopped();
             });
 
@@ -151,6 +166,10 @@ public class Admin_CourseApplicationControlUI extends JPanel {
                 String reason = JOptionPane.showInputDialog(null, "Rejection Reason:", "Feedback", JOptionPane.PLAIN_MESSAGE);
                 if (reason != null && !reason.trim().isEmpty()) {
                     currentStatus = "Rejected: " + reason;
+                    // Update module status in MockDataManager
+                    int row = requestTable.getEditingRow();
+                    String moduleId = (String) requestTable.getValueAt(row, 0);
+                    MockDataManager.updateModuleStatus(moduleId, "Rejected");
                     fireEditingStopped();
                 } else {
                     cancelCellEditing();
