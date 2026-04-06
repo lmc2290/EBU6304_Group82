@@ -16,7 +16,7 @@ public class LoginMain {
             // 3. Link the Control back to the Boundary
             controller.setLoginUI(loginUI);
 
-            // 4. Show the UI
+            // 4. Show the UIK
             loginUI.setVisible(true);
         });
     }
