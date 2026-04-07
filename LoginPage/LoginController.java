@@ -2,6 +2,10 @@ package LoginPage;
 
 import javax.swing.*;
 
+// [Added] Import UI and Controller from the TAUI package
+import TAUI.TADashboardUI;
+import TAUI.TAController;
+
 /**
  * Control Class
  * Encapsulates the coordination and authentication logic.
@@ -69,7 +73,9 @@ public class LoginController {
                 dashboard = new MODashboardUI(user);
                 break;
             case "TA":
-                dashboard = new TADashboardUI(user);
+                // [Modified] Instantiate TAController and pass it along with the user to TADashboardUI
+                TAController taController = new TAController();
+                dashboard = new TADashboardUI(user, taController);
                 break;
             default:
                 loginUI.showError("Unknown role detected.");

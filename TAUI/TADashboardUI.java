@@ -16,7 +16,6 @@ public class TADashboardUI extends DashBoardUI {
     // Left panel components
     private JComboBox<String> moduleCombo;
     private JComboBox<String> statusCombo;
-    // [新增] 岗位类型和技能要求下拉菜单
     private JComboBox<String> jobTypeCombo;
     private JComboBox<String> skillsCombo;
     private JTextField searchField;
@@ -29,19 +28,26 @@ public class TADashboardUI extends DashBoardUI {
     private JButton applyBtn;
 
     public TADashboardUI(LoginPage.User user, TAController controller) {
+        // 1. super(user) will execute DashBoardUI's constructor,
+        //    which in turn calls the overridden initializeUI() below.
         super(user);
+
+        // 2. Now initialize the controller.
         this.controller = controller;
-        initializeUI();
+
+        // 3. [FIX APPLIED] Safely load the data AFTER the controller is assigned.
+        loadInitialData();
     }
 
     @Override
     protected void initializeUI() {
         setTitle("Teaching Assistant Dashboard - Job Portal (" + currentUser.getId() + ")");
-        setSize(950, 650); // 你也可以根据需要把高度稍微调大一点，比如 700，以免左侧太挤
+        setSize(950, 650);
         setLocationRelativeTo(null);
 
         buildSplitPane();
-        loadInitialData();
+
+        // [FIX APPLIED] Removed loadInitialData() from here to prevent NullPointerException
     }
 
     private void buildSplitPane() {
@@ -50,7 +56,6 @@ public class TADashboardUI extends DashBoardUI {
         // ==========================================
         JPanel leftPanel = new JPanel(new BorderLayout());
 
-        // [修改] 将 GridLayout 的行数从 4 改为 6，以容纳新增的两个筛选项
         JPanel filterPanel = new JPanel(new GridLayout(6, 2, 5, 8));
         filterPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
@@ -64,12 +69,12 @@ public class TADashboardUI extends DashBoardUI {
         statusCombo = new JComboBox<>(new String[]{"All", "Open Only", "Closed"});
         filterPanel.add(statusCombo);
 
-        // [新增] Filter 3: Job Type (岗位类型)
+        // Filter 3: Job Type
         filterPanel.add(new JLabel("Job Type:"));
         jobTypeCombo = new JComboBox<>(new String[]{"All", "Lab Assistant", "Grader", "Tutor", "Invigilator"});
         filterPanel.add(jobTypeCombo);
 
-        // [新增] Filter 4: Required Skills (技能要求)
+        // Filter 4: Required Skills
         filterPanel.add(new JLabel("Required Skills:"));
         skillsCombo = new JComboBox<>(new String[]{"All", "Java", "Python", "MATLAB"});
         filterPanel.add(skillsCombo);
@@ -140,24 +145,21 @@ public class TADashboardUI extends DashBoardUI {
             }
         });
 
-        // [修改] 传递新增的过滤参数给 Controller
         searchBtn.addActionListener(e -> {
             String mod = (String) moduleCombo.getSelectedItem();
             String status = (String) statusCombo.getSelectedItem();
-            String type = (String) jobTypeCombo.getSelectedItem();     // 获取岗位类型
-            String skills = (String) skillsCombo.getSelectedItem();    // 获取技能要求
+            String type = (String) jobTypeCombo.getSelectedItem();
+            String skills = (String) skillsCombo.getSelectedItem();
             String kw = searchField.getText();
 
-            // 注意：这里需要你同步修改 TAController 里的 filterJobs 方法接收 5 个参数
             updateList(controller.filterJobs(mod, status, type, skills, kw));
         });
 
-        // [修改] 重置所有新增的下拉菜单到默认选项
         clearBtn.addActionListener(e -> {
             moduleCombo.setSelectedIndex(0);
             statusCombo.setSelectedIndex(0);
-            jobTypeCombo.setSelectedIndex(0);  // 重置岗位类型
-            skillsCombo.setSelectedIndex(0);   // 重置技能要求
+            jobTypeCombo.setSelectedIndex(0);
+            skillsCombo.setSelectedIndex(0);
             searchField.setText("");
             updateList(controller.getAllJobs());
         });
