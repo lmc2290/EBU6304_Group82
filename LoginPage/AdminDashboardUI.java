@@ -13,10 +13,11 @@ public class AdminDashboardUI extends DashBoardUI {
 
     @Override
     protected void initializeUI() {
+        // Main layout setup
         setLayout(new BorderLayout());
         getContentPane().setBackground(new Color(247, 247, 247));
 
-        // Card panel for switching between different sections
+        // Card panel for switching between sub-panels
         cardLayout = new CardLayout();
         cardPanel = new JPanel(cardLayout);
 
@@ -46,7 +47,7 @@ public class AdminDashboardUI extends DashBoardUI {
         requestBtn.setForeground(Color.WHITE);
         requestBtn.setFocusPainted(false);
 
-        // Mailbox button with icon
+        // Mailbox icon button
         JButton mailboxBtn = new JButton();
         mailboxBtn.setIcon(UIManager.getIcon("OptionPane.informationIcon"));
         mailboxBtn.setPreferredSize(new Dimension(60, 45));
@@ -58,7 +59,7 @@ public class AdminDashboardUI extends DashBoardUI {
         bottomNav.add(mailboxBtn);
         add(bottomNav, BorderLayout.SOUTH);
 
-        // Button action listeners for panel switching
+        // Switch panel actions
         workloadBtn.addActionListener(e -> cardLayout.show(cardPanel, "WORKLOAD"));
         requestBtn.addActionListener(e -> cardLayout.show(cardPanel, "REQUEST"));
     }
