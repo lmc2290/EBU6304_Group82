@@ -63,4 +63,23 @@ public class AdminDashboardUI extends DashBoardUI {
         workloadBtn.addActionListener(e -> cardLayout.show(cardPanel, "WORKLOAD"));
         requestBtn.addActionListener(e -> cardLayout.show(cardPanel, "REQUEST"));
     }
+    // =====================  ADMIN MODULE TEST =====================
+
+public static void main(String[] args) {
+    // Setting System Look and Feel for modern UI appearance
+    try { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()); } catch (Exception e) {}
+
+    // Mock User object for Admin role (String username, String password)
+    User adminTestUser = new User("Admin_Tester", "test123");
+    
+    // Launch the Dashboard
+    javax.swing.SwingUtilities.invokeLater(() -> {
+        AdminDashboardUI dashboard = new AdminDashboardUI(adminTestUser);
+        dashboard.setTitle("ADMIN MODULE DEMO - INDIVIDUAL WORK");
+        dashboard.setSize(1100, 850);
+        dashboard.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        dashboard.setLocationRelativeTo(null);
+        dashboard.setVisible(true);
+    });
+}
 }
