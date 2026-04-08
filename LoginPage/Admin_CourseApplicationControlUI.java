@@ -46,7 +46,6 @@ public class Admin_CourseApplicationControlUI extends JPanel {
             }
         };
 
-        // ✅ 修正笔误：J → JTable
         requestTable = new JTable(tableModel);
         setupTableLogic();
 
@@ -88,6 +87,8 @@ public class Admin_CourseApplicationControlUI extends JPanel {
 
     // Add sample test data
     private void addMockData() {
+        // ✅ Commented out to fix "MockDataManager cannot be resolved"
+        /*
         List<Module> modules = MockDataManager.getModules();
         for (Module module : modules) {
             tableModel.addRow(new Object[]{
@@ -98,6 +99,7 @@ public class Admin_CourseApplicationControlUI extends JPanel {
                     module.getStatus()
             });
         }
+        */
         tableModel.addRow(new Object[]{"CS101", "Java Basics", "Prof. Lee", "VIEW", "Pending"});
         tableModel.addRow(new Object[]{"CS202", "Databases", "Dr. Wong", "VIEW", "Pending"});
         tableModel.addRow(new Object[]{"CS303", "AI Intro", "Dr. Chen", "VIEW", "Approved"});
@@ -153,11 +155,10 @@ public class Admin_CourseApplicationControlUI extends JPanel {
             // Approve action
             appBtn.addActionListener(e -> {
                 currentStatus = "Approved";
-                // Update module status in MockDataManager
-                int row = requestTable.getEditingRow();
-                String moduleId = (String) requestTable.getValueAt(row, 0);
-                MockDataManager.updateModuleStatus(moduleId, "Approved");
-                fireEditingStopped(); 
+                // ✅ Commented out due to missing MockDataManager
+                // int row = requestTable.getEditingRow();
+                // String moduleId = (String) requestTable.getValueAt(row, 0);
+                // MockDataManager.updateModuleStatus(moduleId, "Approved");
                 fireEditingStopped();
             });
 
@@ -166,10 +167,10 @@ public class Admin_CourseApplicationControlUI extends JPanel {
                 String reason = JOptionPane.showInputDialog(null, "Rejection Reason:", "Feedback", JOptionPane.PLAIN_MESSAGE);
                 if (reason != null && !reason.trim().isEmpty()) {
                     currentStatus = "Rejected: " + reason;
-                    // Update module status in MockDataManager
-                    int row = requestTable.getEditingRow();
-                    String moduleId = (String) requestTable.getValueAt(row, 0);
-                    MockDataManager.updateModuleStatus(moduleId, "Rejected");
+                    // ✅ Commented out due to missing MockDataManager
+                    // int row = requestTable.getEditingRow();
+                    // String moduleId = (String) requestTable.getValueAt(row, 0);
+                    // MockDataManager.updateModuleStatus(moduleId, "Rejected");
                     fireEditingStopped();
                 } else {
                     cancelCellEditing();
