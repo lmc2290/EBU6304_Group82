@@ -1,5 +1,7 @@
-package LoginPage;
+package AdminPage;
 
+import LoginPage.DashBoardUI;
+import LoginPage.User;
 import java.awt.*;
 import javax.swing.*;
 
@@ -15,7 +17,7 @@ public class AdminDashboardUI extends DashBoardUI {
     protected void initializeUI() {
         // Main layout setup
         setLayout(new BorderLayout());
-        getContentPane().setBackground(new Color(247, 247, 247));
+        getContentPane().setBackground(new Color(245, 247, 250));
 
         // Card panel for switching between sub-panels
         cardLayout = new CardLayout();
@@ -28,26 +30,14 @@ public class AdminDashboardUI extends DashBoardUI {
         cardPanel.add(coursePanel, "REQUEST");
 
         add(cardPanel, BorderLayout.CENTER);
-
         // Bottom navigation bar
-        JPanel bottomNav = new JPanel(new FlowLayout(FlowLayout.CENTER, 25, 20));
-        bottomNav.setBackground(new Color(247, 247, 247));
+        JPanel bottomNav = new JPanel(new FlowLayout(FlowLayout.CENTER, 30, 20));
+        bottomNav.setBackground(new Color(230, 233, 237)); 
 
-        // Workload button
-        JButton workloadBtn = new JButton("Workload");
-        workloadBtn.setPreferredSize(new Dimension(180, 45));
-        workloadBtn.setBackground(new Color(0, 102, 204));
-        workloadBtn.setForeground(Color.WHITE);
-        workloadBtn.setFocusPainted(false);
-
-        // Request button
-        JButton requestBtn = new JButton("Request");
-        requestBtn.setPreferredSize(new Dimension(180, 45));
-        requestBtn.setBackground(new Color(0, 102, 204));
-        requestBtn.setForeground(Color.WHITE);
-        requestBtn.setFocusPainted(false);
-
-        // Mailbox icon button
+        // fix :ensure the words are visible
+        JButton workloadBtn = createNavBtn("Workload Dashboard", new Color(41, 128, 185));
+        JButton requestBtn = createNavBtn("Approve Requests", new Color(41, 128, 185));
+        
         JButton mailboxBtn = new JButton();
         mailboxBtn.setIcon(UIManager.getIcon("OptionPane.informationIcon"));
         mailboxBtn.setPreferredSize(new Dimension(60, 45));
@@ -59,9 +49,20 @@ public class AdminDashboardUI extends DashBoardUI {
         bottomNav.add(mailboxBtn);
         add(bottomNav, BorderLayout.SOUTH);
 
-        // Switch panel actions
         workloadBtn.addActionListener(e -> cardLayout.show(cardPanel, "WORKLOAD"));
         requestBtn.addActionListener(e -> cardLayout.show(cardPanel, "REQUEST"));
+    }
+
+    private JButton createNavBtn(String text, Color bg) {
+        JButton btn = new JButton(text);
+        btn.setPreferredSize(new Dimension(200, 45));
+        btn.setBackground(bg);
+        btn.setForeground(Color.WHITE); // 确保文字白色可见
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setFocusPainted(false);
+        btn.setBorderPainted(false);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        return btn;
     }
     // =====================  ADMIN MODULE TEST =====================
 
