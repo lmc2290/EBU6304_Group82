@@ -94,44 +94,11 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         add(headerPanel, BorderLayout.NORTH);
 
         // Table setup
-        String[] columnNames = {"ID", "Name", "Workload (Hrs)", "Contact Email"};
+        String[] columnNames = {"ID", "Name", "Enrolled Courses", "Total Work Hours", "Contact Email"};
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
         taTable = new JTable(tableModel);
-
-        // 1. Enable Sorting: Workload (Index 2) High to Low
-        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
-        taTable.setRowSorter(sorter);
-
-        // Set default sort to column 2 (Workload), Descending
-        java.util.List<RowSorter.SortKey> sortKeys = new java.util.ArrayList<>();
-        sortKeys.add(new RowSorter.SortKey(2, SortOrder.DESCENDING));
-        sorter.setSortKeys(sortKeys);
-
-        // 2. Highlighting: Red color for entries over limit
-        taTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
-            @Override
-            public Component getTableCellRendererComponent(JTable table, Object value,
-                                                           boolean isSelected, boolean hasFocus, int row, int column) {
-                JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-
-                // Convert view row index to model index due to sorting
-                int modelRow = table.convertRowIndexToModel(row);
-                try {
-                    int workload = Integer.parseInt(table.getModel().getValueAt(modelRow, 2).toString());
-                    // Highlight red if over limit
-                    if (workload > warningHourLimit) {
-                        label.setForeground(Color.RED);
-                    } else {
-                        label.setForeground(Color.BLACK);
-                    }
-                } catch (Exception e) {
-                    label.setForeground(Color.BLACK);
-                }
-                return label;
-            }
-        });
 
         // Table styling
         taTable.setRowHeight(45);
@@ -167,7 +134,7 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         JPanel limitPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 20));
         limitPanel.setOpaque(false);
 
-        currentLimitLabel = new JLabel("Max Courses per TA: " + currentLimit);
+        currentLimitLabel = new JLabel("Status: Max Courses per TA: " + currentLimit);
         currentLimitLabel.setFont(MAIN_FONT);
         JTextField limitField = new JTextField(4);
         limitField.setPreferredSize(new Dimension(50, 35));
@@ -228,7 +195,7 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
         taTable.setRowSorter(sorter);
         List<RowSorter.SortKey> keys = new ArrayList<>();
-        keys.add(new RowSorter.SortKey(2, SortOrder.DESCENDING));
+        keys.add(new RowSorter.SortKey(3, SortOrder.DESCENDING));
         sorter.setSortKeys(keys);
 
         // Highlight overload entries in red
@@ -239,9 +206,9 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
                 label.setBorder(new EmptyBorder(0, 10, 0, 0));
 
                 int modelRow = t.convertRowIndexToModel(r);
-                int workload = Integer.parseInt(t.getModel().getValueAt(modelRow, 2).toString());
+                int hours = Integer.parseInt(t.getModel().getValueAt(modelRow, 3).toString());
 
-                if (workload > warningHourLimit) {
+                if (hours > warningHourLimit) {
                     label.setForeground(DANGER_RED);
                     label.setFont(new Font("Segoe UI", Font.BOLD, 15));
                 } else {
@@ -258,7 +225,7 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
     private void updateLimit(String input) {
         try {
             currentLimit = Integer.parseInt(input.trim());
-            currentLimitLabel.setText("Max Courses per TA: " + currentLimit);
+            currentLimitLabel.setText("Status: Max Courses per TA: " + currentLimit);
             saveLimitToFile();
             taTable.repaint();
         } catch (Exception e) {
@@ -277,16 +244,66 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         }
     }
 
-    // Placeholder for CSV export function
+    // ===================== CSV Export =====================
     private void exportDataToCSV() {
-        JOptionPane.showMessageDialog(this, "Export function triggered!");
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Export to CSV");
+        fileChooser.setSelectedFile(new File("TA_Workload_" + System.currentTimeMillis() + ".csv"));
+        int userSelection = fileChooser.showSaveDialog(this);
+
+        if (userSelection != JFileChooser.APPROVE_OPTION) {
+            JOptionPane.showMessageDialog(this, "Export cancelled.");
+            return;
+        }
+
+        File fileToSave = fileChooser.getSelectedFile();
+        if (!fileToSave.getName().endsWith(".csv")) {
+            fileToSave = new File(fileToSave.getParentFile(), fileToSave.getName() + ".csv");
+        }
+
+        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileToSave), "UTF-8"))) {
+            DefaultTableModel model = (DefaultTableModel) taTable.getModel();
+            int columnCount = model.getColumnCount();
+
+            for (int i = 0; i < columnCount; i++) {
+                writer.write(escapeCsvValue(model.getColumnName(i)));
+                if (i < columnCount - 1) writer.write(",");
+            }
+            writer.newLine();
+
+            int rowCount = taTable.getRowCount();
+            for (int i = 0; i < rowCount; i++) {
+                int modelRow = taTable.convertRowIndexToModel(i);
+                for (int j = 0; j < columnCount; j++) {
+                    Object val = model.getValueAt(modelRow, j);
+                    String cell = val == null ? "" : val.toString();
+                    writer.write(escapeCsvValue(cell));
+                    if (j < columnCount - 1) writer.write(",");
+                }
+                writer.newLine();
+            }
+
+            JOptionPane.showMessageDialog(this, "Export successful!\nSaved to: " + fileToSave.getAbsolutePath());
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Export failed: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private String escapeCsvValue(String value) {
+        if (value.startsWith("=") || value.startsWith("+") || value.startsWith("-") || value.startsWith("@")) {
+            value = "'" + value;
+        }
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            value = "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
     }
 
     // Add test data to table
     private void addMockData() {
-        tableModel.addRow(new Object[]{"ID-901", "Alice Johnson", "5", "alice.j@uni.edu"});
-        tableModel.addRow(new Object[]{"ID-722", "Bob Smith", "2", "b.smith@uni.edu"});
-        tableModel.addRow(new Object[]{"ID-553", "Charlie Brown", "4", "charlie@uni.edu"});
-        tableModel.addRow(new Object[]{"ID-104", "David Wilson", "1", "d.wilson@uni.edu"});
+        tableModel.addRow(new Object[]{"ID-901", "Alice Johnson", "3", "5", "alice.j@uni.edu"});
+        tableModel.addRow(new Object[]{"ID-722", "Bob Smith", "2", "2", "b.smith@uni.edu"});
+        tableModel.addRow(new Object[]{"ID-553", "Charlie Brown", "1", "4", "charlie@uni.edu"});
+        tableModel.addRow(new Object[]{"ID-104", "David Wilson", "2", "1", "d.wilson@uni.edu"});
     }
 }
