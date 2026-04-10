@@ -1,7 +1,7 @@
 package LoginPage;
 
-import javax.swing.*;
 import java.awt.*;
+import javax.swing.*;
 
 /**
  * Abstract Boundary Class
@@ -19,7 +19,7 @@ public abstract class DashBoardUI extends JFrame {
         getContentPane().setBackground(new Color(247, 247, 247));
 
         // Call the abstract method to let subclasses build their specific UI
-        //initializeUI();
+        initializeUI();
     }
 
     /**

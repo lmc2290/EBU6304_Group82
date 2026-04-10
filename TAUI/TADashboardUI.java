@@ -26,9 +26,15 @@ public class TADashboardUI extends DashBoardUI {
     private JButton applyBtn;
 
     public TADashboardUI(LoginPage.User user, TAController controller) {
+        // 1. super(user) will execute DashBoardUI's constructor,
+        //    which in turn calls the overridden initializeUI() below.
         super(user);
+
+        // 2. Now initialize the controller.
         this.controller = controller;
-        initializeUI();
+
+        // 3. [FIX APPLIED] Safely load the data AFTER the controller is assigned.
+        loadInitialData();
     }
 
     @Override
@@ -38,13 +44,14 @@ public class TADashboardUI extends DashBoardUI {
         setLocationRelativeTo(null);
 
         buildSplitPane();
-        loadInitialData();
+
+        // [FIX APPLIED] Removed loadInitialData() from here to prevent NullPointerException
     }
 
     private void buildSplitPane() {
         JPanel leftPanel = new JPanel(new BorderLayout());
 
-        // [新增] Top Menu Bar for CV Management
+        // Top Menu Bar for CV Management
         JPanel topMenuBar = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton manageCVBtn = new JButton("Manage My CVs");
         manageCVBtn.setBackground(new Color(51, 153, 255)); // Blue button
@@ -81,8 +88,7 @@ public class TADashboardUI extends DashBoardUI {
         JButton clearBtn = new JButton("Clear Filters");
         filterPanel.add(searchBtn);
         filterPanel.add(clearBtn);
-
-        // [修改] 组合顶部菜单和过滤器
+      
         JPanel leftTopContainer = new JPanel(new BorderLayout());
         leftTopContainer.add(topMenuBar, BorderLayout.NORTH);
         leftTopContainer.add(filterPanel, BorderLayout.CENTER);
