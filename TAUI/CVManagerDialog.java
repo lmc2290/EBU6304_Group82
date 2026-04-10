@@ -1,6 +1,5 @@
 package TAUI;
 
-
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
@@ -15,10 +14,12 @@ public class CVManagerDialog extends JDialog {
     private TAController controller;
     private DefaultListModel<CVRecord> cvListModel;
     private JList<CVRecord> cvList;
+    private String userId; // [Feature]: Added to isolate CV data
 
-    public CVManagerDialog(JFrame parent, TAController controller) {
-        super(parent, "Manage My CVs", true); // 'true' makes it a modal dialog
+    public CVManagerDialog(JFrame parent, TAController controller, String userId) {
+        super(parent, "Manage My CVs", true);
         this.controller = controller;
+        this.userId = userId;
         initUI();
         refreshCVList();
     }
@@ -28,7 +29,6 @@ public class CVManagerDialog extends JDialog {
         setLocationRelativeTo(getParent());
         setLayout(new BorderLayout(10, 10));
 
-        // Center List Area
         cvListModel = new DefaultListModel<>();
         cvList = new JList<>(cvListModel);
         cvList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -38,7 +38,6 @@ public class CVManagerDialog extends JDialog {
         listPanel.setBorder(BorderFactory.createTitledBorder("My Uploaded CVs"));
         listPanel.add(new JScrollPane(cvList), BorderLayout.CENTER);
 
-        // Right Button Area
         JPanel btnPanel = new JPanel(new GridLayout(3, 1, 5, 10));
         btnPanel.setBorder(BorderFactory.createEmptyBorder(15, 5, 15, 15));
 
@@ -59,9 +58,10 @@ public class CVManagerDialog extends JDialog {
         deleteBtn.addActionListener(e -> {
             CVRecord selectedCV = cvList.getSelectedValue();
             if (selectedCV != null) {
-                int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete '" + selectedCV + "'?", "Confirm", JOptionPane.YES_NO_OPTION);
+                int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete '" + selectedCV.getOriginalName() + "'?", "Confirm", JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
-                    controller.deleteCV(selectedCV);
+                    // Pass userId to ensure we delete from the correct list
+                    controller.deleteCV(userId, selectedCV);
                     refreshCVList();
                 }
             } else {
@@ -74,7 +74,6 @@ public class CVManagerDialog extends JDialog {
 
     private void handleUpload() {
         JFileChooser fileChooser = new JFileChooser();
-        // US-03 AC1: Enforce file formats in the file picker
         FileNameExtensionFilter filter = new FileNameExtensionFilter("CV Documents (*.pdf, *.docx)", "pdf", "docx");
         fileChooser.setFileFilter(filter);
 
@@ -82,15 +81,13 @@ public class CVManagerDialog extends JDialog {
         if (result == JFileChooser.APPROVE_OPTION) {
             File selectedFile = fileChooser.getSelectedFile();
 
-            // Delegate validation to Controller
-            String errorMessage = controller.uploadCV(selectedFile);
+            // Pass userId to bind the uploaded CV to this user
+            String errorMessage = controller.uploadCV(userId, selectedFile);
 
             if (errorMessage == null) {
-                // US-03 AC3: Display uploaded file name and success message
                 JOptionPane.showMessageDialog(this, "Successfully uploaded: \n" + selectedFile.getName(), "Success", JOptionPane.INFORMATION_MESSAGE);
                 refreshCVList();
             } else {
-                // US-03 AC2: Display error if size or format is invalid
                 JOptionPane.showMessageDialog(this, errorMessage, "Upload Failed", JOptionPane.ERROR_MESSAGE);
             }
         }
@@ -98,7 +95,8 @@ public class CVManagerDialog extends JDialog {
 
     private void refreshCVList() {
         cvListModel.clear();
-        for (CVRecord cv : controller.getUploadedCVs()) {
+        // Fetch CVs specific to this user
+        for (CVRecord cv : controller.getUploadedCVs(userId)) {
             cvListModel.addElement(cv);
         }
     }

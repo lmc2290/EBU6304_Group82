@@ -50,6 +50,8 @@ public class TADashboardUI extends DashBoardUI {
         manageCVBtn.setBackground(new Color(51, 153, 255)); // Blue button
         manageCVBtn.setForeground(Color.WHITE);
         manageCVBtn.setFont(new Font("Arial", Font.BOLD, 14));
+        manageCVBtn.setOpaque(true);
+        manageCVBtn.setBorderPainted(false);
         topMenuBar.add(manageCVBtn);
 
         JPanel filterPanel = new JPanel(new GridLayout(6, 2, 5, 8));
@@ -110,6 +112,8 @@ public class TADashboardUI extends DashBoardUI {
         applyBtn.setForeground(Color.WHITE);
         applyBtn.setEnabled(false);
         applyBtn.setPreferredSize(new Dimension(0, 65));
+        applyBtn.setOpaque(true);
+        applyBtn.setBorderPainted(false);
 
         JPanel bottomPanel = new JPanel(new BorderLayout());
         bottomPanel.add(applyBtn, BorderLayout.CENTER);
@@ -152,14 +156,15 @@ public class TADashboardUI extends DashBoardUI {
         applyBtn.addActionListener(e -> {
             Job selectedJob = jobList.getSelectedValue();
             if (selectedJob != null) {
-                ApplicationDialog dialog = new ApplicationDialog(this, controller, selectedJob);
+                // [Feature]: Pass currentUser.getId() to load specific user's CVs
+                ApplicationDialog dialog = new ApplicationDialog(this, controller, selectedJob, currentUser.getId());
                 dialog.setVisible(true);
             }
         });
 
-        // [新增] 管理简历按钮事件
         manageCVBtn.addActionListener(e -> {
-            CVManagerDialog cvDialog = new CVManagerDialog(this, controller);
+            // [Feature]: Pass currentUser.getId() to isolate user's CV management
+            CVManagerDialog cvDialog = new CVManagerDialog(this, controller, currentUser.getId());
             cvDialog.setVisible(true);
         });
     }
