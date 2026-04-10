@@ -1,7 +1,7 @@
 package LoginPage;
 
-import javax.swing.*;
 import java.awt.*;
+import javax.swing.*;
 
 /**
  * Abstract Boundary Class

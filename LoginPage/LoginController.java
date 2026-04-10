@@ -1,10 +1,8 @@
 package LoginPage;
 
-import javax.swing.*;
-
-// [Added] Import UI and Controller from the TAUI package
-import TAUI.TADashboardUI;
+import AdminPage.AdminDashboardUI;
 import TAUI.TAController;
+import TAUI.TADashboardUI;
 
 /**
  * Control Class
