@@ -2,6 +2,7 @@ package AdminPage;
 
 import LoginPage.User;
 import java.awt.*;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.*;
@@ -12,9 +13,15 @@ import javax.swing.table.*;
 public class Admin_TAWorkLoadControlUI extends JPanel {
     private final User currentUser;
     private JLabel currentLimitLabel;
+    private JLabel hourLimitLabel;
     private JTable taTable;
     private DefaultTableModel tableModel;
+
     private int currentLimit = 3;
+    private int warningHourLimit = 5;
+
+    private final File configFile = new File("limit_config.txt");
+    private final File hourConfigFile = new File("hour_limit_config.txt");
 
     // UI Style Constants
     private final Color PRIMARY_BLUE = new Color(41, 128, 185);
@@ -30,8 +37,42 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         this.setBackground(BG_LIGHT);
         this.setBorder(new EmptyBorder(30, 40, 30, 40));
 
+        loadLimitFromFile();
+        loadHourLimitFromFile();
         initializeUI();
         addMockData();
+    }
+
+    private void loadLimitFromFile() {
+        if (!configFile.exists()) return;
+        try (BufferedReader br = new BufferedReader(new FileReader(configFile))) {
+            String line = br.readLine();
+            if (line != null) currentLimit = Integer.parseInt(line.trim());
+        } catch (Exception e) { currentLimit = 3; }
+    }
+
+    private void saveLimitToFile() {
+        try (PrintWriter pw = new PrintWriter(new FileWriter(configFile))) {
+            pw.println(currentLimit);
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, "Save failed: " + e.getMessage());
+        }
+    }
+
+    private void loadHourLimitFromFile() {
+        if (!hourConfigFile.exists()) return;
+        try (BufferedReader br = new BufferedReader(new FileReader(hourConfigFile))) {
+            String line = br.readLine();
+            if (line != null) warningHourLimit = Integer.parseInt(line.trim());
+        } catch (Exception e) { warningHourLimit = 5; }
+    }
+
+    private void saveHourLimitToFile() {
+        try (PrintWriter pw = new PrintWriter(new FileWriter(hourConfigFile))) {
+            pw.println(warningHourLimit);
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, "Save failed: " + e.getMessage());
+        }
     }
 
     // Initialize all UI components
@@ -69,28 +110,28 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         sorter.setSortKeys(sortKeys);
 
         // 2. Highlighting: Red color for entries over limit
-taTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
-    @Override
-    public Component getTableCellRendererComponent(JTable table, Object value,
-            boolean isSelected, boolean hasFocus, int row, int column) {
-        JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-        
-        // Convert view row index to model index due to sorting
-        int modelRow = table.convertRowIndexToModel(row);
-        try {
-            int workload = Integer.parseInt(table.getModel().getValueAt(modelRow, 2).toString());
-            // Highlight red if over limit
-            if (workload > currentLimit) {
-                label.setForeground(Color.RED);
-            } else {
-                label.setForeground(Color.BLACK);
+        taTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                                                           boolean isSelected, boolean hasFocus, int row, int column) {
+                JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+
+                // Convert view row index to model index due to sorting
+                int modelRow = table.convertRowIndexToModel(row);
+                try {
+                    int workload = Integer.parseInt(table.getModel().getValueAt(modelRow, 2).toString());
+                    // Highlight red if over limit
+                    if (workload > warningHourLimit) {
+                        label.setForeground(Color.RED);
+                    } else {
+                        label.setForeground(Color.BLACK);
+                    }
+                } catch (Exception e) {
+                    label.setForeground(Color.BLACK);
+                }
+                return label;
             }
-        } catch (Exception e) {
-            label.setForeground(Color.BLACK);
-        }
-        return label;
-    }
-});
+        });
 
         // Table styling
         taTable.setRowHeight(45);
@@ -126,19 +167,34 @@ taTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
         JPanel limitPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 20));
         limitPanel.setOpaque(false);
 
-        currentLimitLabel = new JLabel("Status: Limit is set to " + currentLimit);
+        currentLimitLabel = new JLabel("Max Courses per TA: " + currentLimit);
         currentLimitLabel.setFont(MAIN_FONT);
-
         JTextField limitField = new JTextField(4);
         limitField.setPreferredSize(new Dimension(50, 35));
         limitField.setHorizontalAlignment(JTextField.CENTER);
+        JButton setBtn = createStyledButton("Set Course Limit", PRIMARY_BLUE, true);
+        setBtn.addActionListener(e -> {
+            updateLimit(limitField.getText());
+            limitField.setText("");
+        });
 
-        JButton setBtn = createStyledButton("Set New Limit", PRIMARY_BLUE, true);
-        setBtn.addActionListener(e -> updateLimit(limitField.getText()));
+        hourLimitLabel = new JLabel("Warning Hours: " + warningHourLimit);
+        hourLimitLabel.setFont(MAIN_FONT);
+        JTextField hourField = new JTextField(4);
+        hourField.setPreferredSize(new Dimension(50, 35));
+        hourField.setHorizontalAlignment(JTextField.CENTER);
+        JButton setHourBtn = createStyledButton("Set Hour Warning", PRIMARY_BLUE, true);
+        setHourBtn.addActionListener(e -> {
+            updateHourLimit(hourField.getText());
+            hourField.setText("");
+        });
 
         limitPanel.add(currentLimitLabel);
         limitPanel.add(limitField);
         limitPanel.add(setBtn);
+        limitPanel.add(hourLimitLabel);
+        limitPanel.add(hourField);
+        limitPanel.add(setHourBtn);
 
         // Export button section
         JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 20));
@@ -185,7 +241,7 @@ taTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
                 int modelRow = t.convertRowIndexToModel(r);
                 int workload = Integer.parseInt(t.getModel().getValueAt(modelRow, 2).toString());
 
-                if (workload > currentLimit) {
+                if (workload > warningHourLimit) {
                     label.setForeground(DANGER_RED);
                     label.setFont(new Font("Segoe UI", Font.BOLD, 15));
                 } else {
@@ -199,11 +255,22 @@ taTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
         });
     }
 
-    // Update workload limit value
     private void updateLimit(String input) {
         try {
             currentLimit = Integer.parseInt(input.trim());
-            currentLimitLabel.setText("Status: Limit is set to " + currentLimit);
+            currentLimitLabel.setText("Max Courses per TA: " + currentLimit);
+            saveLimitToFile();
+            taTable.repaint();
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Please enter a valid number.");
+        }
+    }
+
+    private void updateHourLimit(String input) {
+        try {
+            warningHourLimit = Integer.parseInt(input.trim());
+            hourLimitLabel.setText("Warning Hours: " + warningHourLimit);
+            saveHourLimitToFile();
             taTable.repaint();
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Please enter a valid number.");

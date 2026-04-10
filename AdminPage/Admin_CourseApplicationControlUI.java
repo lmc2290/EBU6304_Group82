@@ -161,7 +161,7 @@ public class Admin_CourseApplicationControlUI extends JPanel {
                 int row = requestTable.getEditingRow();
                 String moduleId = (String) requestTable.getValueAt(row, 0);
                 MockDataManager.updateModuleStatus(moduleId, "Approved");
-                fireEditingStopped(); 
+                fireEditingStopped();
                 fireEditingStopped();
             });
 
