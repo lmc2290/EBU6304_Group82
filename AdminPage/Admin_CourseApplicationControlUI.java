@@ -1,16 +1,16 @@
 package AdminPage;
 
-import LoginPage.MockDataManager;
-import LoginPage.Module;
-import LoginPage.User;
 import java.awt.*;
-import java.io.*;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.*;
+
+import LoginPage.MockDataManager;
+import LoginPage.Module;
+import LoginPage.User;
 
 // Course Application Approval Panel for Admin
 public class Admin_CourseApplicationControlUI extends JPanel {
@@ -23,8 +23,6 @@ public class Admin_CourseApplicationControlUI extends JPanel {
     private final Color DANGER_RED = new Color(231, 76, 60);
     private final Color BG_LIGHT = new Color(245, 247, 250);
     private final Color TEXT_DARK = new Color(44, 62, 80);
-    private final Color PRIMARY_BLUE = new Color(41, 128, 185);
-    private final Font MAIN_FONT = new Font("Segoe UI", Font.PLAIN, 15);
 
     public Admin_CourseApplicationControlUI(User user) {
         this.setLayout(new BorderLayout(0, 20));
@@ -52,6 +50,7 @@ public class Admin_CourseApplicationControlUI extends JPanel {
             }
         };
 
+        // ✅ 修正笔误：J → JTable
         requestTable = new JTable(tableModel);
         setupTableLogic();
 
@@ -60,36 +59,6 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         scrollPane.getViewport().setBackground(Color.WHITE);
         add(scrollPane, BorderLayout.CENTER);
-
-        // Bottom panel with export button
-        JPanel bottomPanel = new JPanel(new BorderLayout());
-        bottomPanel.setOpaque(false);
-        bottomPanel.setPreferredSize(new Dimension(0, 80));
-
-        JPanel emptyPanel = new JPanel();
-        emptyPanel.setOpaque(false);
-        bottomPanel.add(emptyPanel, BorderLayout.WEST);
-
-        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 20));
-        actionPanel.setOpaque(false);
-        JButton exportBtn = createStyledButton("Export Excel (CSV)", new Color(46, 204, 113), true);
-        exportBtn.addActionListener(e -> exportDataToCSV());
-        actionPanel.add(exportBtn);
-
-        bottomPanel.add(actionPanel, BorderLayout.EAST);
-        add(bottomPanel, BorderLayout.SOUTH);
-    }
-
-    private JButton createStyledButton(String text, Color bg, boolean isPrimary) {
-        JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btn.setPreferredSize(new Dimension(160, 40));
-        btn.setBackground(bg);
-        btn.setForeground(Color.WHITE);
-        btn.setFocusPainted(false);
-        btn.setBorderPainted(false);
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        return btn;
     }
 
     // Configure table appearance, sorting and rendering rules
@@ -136,61 +105,6 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         tableModel.addRow(new Object[]{"CS101", "Java Basics", "Prof. Lee", "VIEW", "Pending"});
         tableModel.addRow(new Object[]{"CS202", "Databases", "Dr. Wong", "VIEW", "Pending"});
         tableModel.addRow(new Object[]{"CS303", "AI Intro", "Dr. Chen", "VIEW", "Approved"});
-    }
-
-    // ===================== CSV Export =====================
-    private void exportDataToCSV() {
-        JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setDialogTitle("Export to CSV");
-        fileChooser.setSelectedFile(new File("Course_Applications_" + System.currentTimeMillis() + ".csv"));
-        int userSelection = fileChooser.showSaveDialog(this);
-
-        if (userSelection != JFileChooser.APPROVE_OPTION) {
-            JOptionPane.showMessageDialog(this, "Export cancelled.");
-            return;
-        }
-
-        File fileToSave = fileChooser.getSelectedFile();
-        if (!fileToSave.getName().endsWith(".csv")) {
-            fileToSave = new File(fileToSave.getParentFile(), fileToSave.getName() + ".csv");
-        }
-
-        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileToSave), "UTF-8"))) {
-            DefaultTableModel model = (DefaultTableModel) requestTable.getModel();
-            int columnCount = model.getColumnCount();
-            for (int i = 0; i < columnCount; i++) {
-                writer.write(escapeCsvValue(model.getColumnName(i)));
-                if (i < columnCount - 1) writer.write(",");
-            }
-            writer.newLine();
-
-            int rowCount = model.getRowCount();
-            for (int i = 0; i < rowCount; i++) {
-                int modelRow = requestTable.convertRowIndexToModel(i);
-                for (int j = 0; j < columnCount; j++) {
-                    Object value = model.getValueAt(modelRow, j);
-                    String cellValue = value != null ? value.toString() : "";
-                    writer.write(escapeCsvValue(cellValue));
-                    if (j < columnCount - 1) writer.write(",");
-                }
-                writer.newLine();
-            }
-
-            JOptionPane.showMessageDialog(this, "Export successful!\nFile saved to: " + fileToSave.getAbsolutePath());
-        } catch (IOException e) {
-            JOptionPane.showMessageDialog(this, "Export failed: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-            e.printStackTrace();
-        }
-    }
-
-    private String escapeCsvValue(String value) {
-        if (value.startsWith("=") || value.startsWith("+") || value.startsWith("-") || value.startsWith("@")) {
-            value = "'" + value;
-        }
-        if (value.contains(",") || value.contains("\"") || value.contains("\n") || value.contains("\r")) {
-            value = "\"" + value.replace("\"", "\"\"") + "\"";
-        }
-        return value;
     }
 
     // Custom renderer: show buttons for Pending, text for Approved/Rejected
@@ -247,6 +161,7 @@ public class Admin_CourseApplicationControlUI extends JPanel {
                 int row = requestTable.getEditingRow();
                 String moduleId = (String) requestTable.getValueAt(row, 0);
                 MockDataManager.updateModuleStatus(moduleId, "Approved");
+                fireEditingStopped();
                 fireEditingStopped();
             });
 
