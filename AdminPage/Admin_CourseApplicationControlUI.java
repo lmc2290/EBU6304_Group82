@@ -1,4 +1,4 @@
-package LoginPage;
+package AdminPage;
 
 import java.awt.*;
 import java.util.ArrayList;
@@ -7,6 +7,10 @@ import java.util.List;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.*;
+
+import LoginPage.MockDataManager;
+import LoginPage.Module;
+import LoginPage.User;
 
 // Course Application Approval Panel for Admin
 public class Admin_CourseApplicationControlUI extends JPanel {

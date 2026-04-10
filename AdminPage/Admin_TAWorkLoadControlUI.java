@@ -1,5 +1,6 @@
-package LoginPage;
+package AdminPage;
 
+import LoginPage.User;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -57,6 +58,39 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
         taTable = new JTable(tableModel);
+
+        // 1. Enable Sorting: Workload (Index 2) High to Low
+        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
+        taTable.setRowSorter(sorter);
+
+        // Set default sort to column 2 (Workload), Descending
+        java.util.List<RowSorter.SortKey> sortKeys = new java.util.ArrayList<>();
+        sortKeys.add(new RowSorter.SortKey(2, SortOrder.DESCENDING));
+        sorter.setSortKeys(sortKeys);
+
+        // 2. Highlighting: Red color for entries over limit
+taTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+    @Override
+    public Component getTableCellRendererComponent(JTable table, Object value,
+            boolean isSelected, boolean hasFocus, int row, int column) {
+        JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+        
+        // Convert view row index to model index due to sorting
+        int modelRow = table.convertRowIndexToModel(row);
+        try {
+            int workload = Integer.parseInt(table.getModel().getValueAt(modelRow, 2).toString());
+            // Highlight red if over limit
+            if (workload > currentLimit) {
+                label.setForeground(Color.RED);
+            } else {
+                label.setForeground(Color.BLACK);
+            }
+        } catch (Exception e) {
+            label.setForeground(Color.BLACK);
+        }
+        return label;
+    }
+});
 
         // Table styling
         taTable.setRowHeight(45);
