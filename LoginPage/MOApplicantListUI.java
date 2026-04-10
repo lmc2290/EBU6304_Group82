@@ -9,9 +9,10 @@ import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
-
+import javax.swing.table.DefaultTableCellRenderer;
 public class MOApplicantListUI extends JPanel {
     private final User currentUser;
+
     private JTable applicantTable;
     private DefaultTableModel tableModel;
     private JComboBox<String> courseFilterBox;
@@ -19,14 +20,26 @@ public class MOApplicantListUI extends JPanel {
     private JTextField nameFilterField;
     private TableRowSorter<DefaultTableModel> sorter;
 
+    private JLabel titleLabel;
+    private JLabel statsLabel;
+    private JProgressBar limitProgressBar;
+
     private static final Color PAGE_BG = new Color(245, 247, 250);
     private static final Color CARD_BG = Color.WHITE;
     private static final Color TITLE_COLOR = new Color(33, 37, 41);
+    private static final Color SUBTITLE_COLOR = new Color(108, 117, 125);
     private static final Color HEADER_BG = new Color(52, 58, 64);
+
     private static final Color PRIMARY_BTN = new Color(0, 123, 255);
     private static final Color PRIMARY_BTN_HOVER = new Color(0, 105, 217);
+
     private static final Color SECONDARY_BTN = new Color(108, 117, 125);
     private static final Color SECONDARY_BTN_HOVER = new Color(90, 98, 104);
+
+    private static final Color SUCCESS_COLOR = new Color(40, 167, 69);
+    private static final Color WARNING_COLOR = new Color(255, 193, 7);
+    private static final Color DANGER_COLOR = new Color(220, 53, 69);
+
     private static final Color BORDER_COLOR = new Color(220, 224, 230);
 
     public MOApplicantListUI(User user) {
@@ -38,30 +51,55 @@ public class MOApplicantListUI extends JPanel {
     }
 
     private void initializeUI() {
-        add(createTitlePanel(), BorderLayout.NORTH);
+        add(createTopPanel(), BorderLayout.NORTH);
         add(createTableWrapperPanel(), BorderLayout.CENTER);
         add(createFilterWrapperPanel(), BorderLayout.SOUTH);
+        refreshLimitDisplay();
     }
 
-    private JPanel createTitlePanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(PAGE_BG);
+    private JPanel createTopPanel() {
+        JPanel topPanel = new JPanel();
+        topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.Y_AXIS));
+        topPanel.setBackground(PAGE_BG);
 
-        String moduleText = currentUser.getModuleName();
-        if (moduleText == null || moduleText.trim().isEmpty()) {
-            moduleText = "Not Assigned";
-        }
+        JPanel titlePanel = new JPanel(new BorderLayout());
+        titlePanel.setBackground(PAGE_BG);
 
-        JLabel titleLabel = new JLabel(
-                "MO Applicant List - Module: " + moduleText,
-                SwingConstants.CENTER
-        );
+        titleLabel = new JLabel("", SwingConstants.CENTER);
         titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
         titleLabel.setForeground(TITLE_COLOR);
-        titleLabel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(5, 10, 8, 10));
 
-        panel.add(titleLabel, BorderLayout.CENTER);
-        return panel;
+        titlePanel.add(titleLabel, BorderLayout.CENTER);
+
+        JPanel statsPanel = new JPanel();
+        statsPanel.setLayout(new BoxLayout(statsPanel, BoxLayout.Y_AXIS));
+        statsPanel.setBackground(CARD_BG);
+        statsPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER_COLOR, 1, true),
+                BorderFactory.createEmptyBorder(14, 18, 14, 18)
+        ));
+
+        statsLabel = new JLabel("", SwingConstants.CENTER);
+        statsLabel.setFont(new Font("Arial", Font.BOLD, 15));
+        statsLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        limitProgressBar = new JProgressBar();
+        limitProgressBar.setStringPainted(true);
+        limitProgressBar.setFont(new Font("Arial", Font.BOLD, 13));
+        limitProgressBar.setPreferredSize(new Dimension(300, 26));
+        limitProgressBar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+        limitProgressBar.setBorder(BorderFactory.createLineBorder(BORDER_COLOR));
+
+        statsPanel.add(statsLabel);
+        statsPanel.add(Box.createVerticalStrut(10));
+        statsPanel.add(limitProgressBar);
+
+        topPanel.add(titlePanel);
+        topPanel.add(Box.createVerticalStrut(8));
+        topPanel.add(statsPanel);
+
+        return topPanel;
     }
 
     private JPanel createTableWrapperPanel() {
@@ -115,6 +153,8 @@ public class MOApplicantListUI extends JPanel {
         applicantTable.getColumn("Action").setCellRenderer(new ButtonRenderer("Update Status", SECONDARY_BTN));
         applicantTable.getColumn("Action").setCellEditor(new StatusButtonEditor(new JCheckBox()));
 
+        applicantTable.getColumn("Status").setCellRenderer(new StatusColorRenderer());
+
         JScrollPane scrollPane = new JScrollPane(applicantTable);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         scrollPane.getViewport().setBackground(Color.WHITE);
@@ -135,15 +175,24 @@ public class MOApplicantListUI extends JPanel {
     }
 
     private JPanel createFilterPanel() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 8));
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBackground(CARD_BG);
+
+        JPanel firstRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 8));
+        firstRow.setBackground(CARD_BG);
+
+        JPanel secondRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 8));
+        secondRow.setBackground(CARD_BG);
 
         courseFilterBox = new JComboBox<>(new String[]{
                 "All", "Java", "Database", "OOP", "Python", "ML"
         });
+
         englishFilterBox = new JComboBox<>(new String[]{
                 "All", "IELTS 6.5", "IELTS 7.0", "IELTS 7.5"
         });
+
         nameFilterField = new JTextField(12);
 
         styleComboBox(courseFilterBox);
@@ -153,20 +202,30 @@ public class MOApplicantListUI extends JPanel {
         JButton filterButton = createStyledButton("Filter", PRIMARY_BTN, PRIMARY_BTN_HOVER);
         JButton clearButton = createStyledButton("Clear", SECONDARY_BTN, SECONDARY_BTN_HOVER);
         JButton refreshButton = createStyledButton("Refresh", PRIMARY_BTN, PRIMARY_BTN_HOVER);
+        JButton setLimitButton = createStyledButton("Set Limit", SECONDARY_BTN, SECONDARY_BTN_HOVER);
 
         filterButton.addActionListener(e -> applyFilters());
         clearButton.addActionListener(e -> clearFilters());
-        refreshButton.addActionListener(e -> loadApplicantData());
+        refreshButton.addActionListener(e -> {
+            loadApplicantData();
+            refreshLimitDisplay();
+        });
+        setLimitButton.addActionListener(e -> setModuleLimit());
 
-        panel.add(createLabel("Completed Course:"));
-        panel.add(courseFilterBox);
-        panel.add(createLabel("English Level:"));
-        panel.add(englishFilterBox);
-        panel.add(createLabel("Name:"));
-        panel.add(nameFilterField);
-        panel.add(filterButton);
-        panel.add(clearButton);
-        panel.add(refreshButton);
+        firstRow.add(createLabel("Completed Course:"));
+        firstRow.add(courseFilterBox);
+        firstRow.add(createLabel("English Level:"));
+        firstRow.add(englishFilterBox);
+        firstRow.add(createLabel("Name:"));
+        firstRow.add(nameFilterField);
+
+        secondRow.add(filterButton);
+        secondRow.add(clearButton);
+        secondRow.add(refreshButton);
+        secondRow.add(setLimitButton);
+
+        panel.add(firstRow);
+        panel.add(secondRow);
 
         return panel;
     }
@@ -249,6 +308,57 @@ public class MOApplicantListUI extends JPanel {
         }
     }
 
+    private void refreshLimitDisplay() {
+        String moduleText = currentUser.getModuleName();
+        if (moduleText == null || moduleText.trim().isEmpty()) {
+            moduleText = "Not Assigned";
+        }
+
+        if ("Not Assigned".equals(moduleText)) {
+            titleLabel.setText("MO Applicant List - Module: Not Assigned");
+            statsLabel.setText("No module limit available");
+            statsLabel.setForeground(SUBTITLE_COLOR);
+
+            limitProgressBar.setMaximum(1);
+            limitProgressBar.setValue(0);
+            limitProgressBar.setString("N/A");
+            limitProgressBar.setForeground(SECONDARY_BTN);
+            return;
+        }
+
+        int limit = MODataStore.getPositionLimitForModule(moduleText);
+        int approved = MODataStore.getApprovedCountForModule(moduleText);
+
+        titleLabel.setText("MO Applicant List - Module: " + moduleText);
+        statsLabel.setText("Approved: " + approved + " / Limit: " + limit);
+
+        if (limit <= 0) {
+            statsLabel.setForeground(DANGER_COLOR);
+            limitProgressBar.setMaximum(1);
+            limitProgressBar.setValue(0);
+            limitProgressBar.setString("No limit set");
+            limitProgressBar.setForeground(DANGER_COLOR);
+            return;
+        }
+
+        limitProgressBar.setMaximum(limit);
+        limitProgressBar.setValue(Math.min(approved, limit));
+        limitProgressBar.setString(approved + " / " + limit);
+
+        double ratio = (double) approved / limit;
+
+        if (approved >= limit) {
+            statsLabel.setForeground(DANGER_COLOR);
+            limitProgressBar.setForeground(DANGER_COLOR);
+        } else if (ratio >= 0.8) {
+            statsLabel.setForeground(WARNING_COLOR.darker());
+            limitProgressBar.setForeground(WARNING_COLOR);
+        } else {
+            statsLabel.setForeground(SUCCESS_COLOR.darker());
+            limitProgressBar.setForeground(SUCCESS_COLOR);
+        }
+    }
+
     private void applyFilters() {
         List<RowFilter<Object, Object>> filters = new ArrayList<>();
 
@@ -278,6 +388,76 @@ public class MOApplicantListUI extends JPanel {
         englishFilterBox.setSelectedIndex(0);
         nameFilterField.setText("");
         sorter.setRowFilter(null);
+    }
+
+    private void setModuleLimit() {
+        String moduleName = currentUser.getModuleName();
+
+        if (moduleName == null || moduleName.trim().isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "No module is assigned to the current MO.",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE
+            );
+            return;
+        }
+
+        int currentLimit = MODataStore.getPositionLimitForModule(moduleName);
+
+        String input = JOptionPane.showInputDialog(
+                this,
+                "Enter new position limit for module " + moduleName + ":\nCurrent limit: " + currentLimit,
+                currentLimit
+        );
+
+        if (input == null) {
+            return;
+        }
+
+        input = input.trim();
+        if (input.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Limit cannot be empty.",
+                    "Warning",
+                    JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
+
+        try {
+            int newLimit = Integer.parseInt(input);
+
+            if (newLimit <= 0) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Limit must be greater than 0.",
+                        "Warning",
+                        JOptionPane.WARNING_MESSAGE
+                );
+                return;
+            }
+
+            MODataStore.updateModulePositionLimit(moduleName, newLimit);
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Position limit for module " + moduleName + " updated to " + newLimit + ".",
+                    "Success",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+
+            refreshLimitDisplay();
+
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Please enter a valid integer.",
+                    "Invalid Input",
+                    JOptionPane.ERROR_MESSAGE
+            );
+        }
     }
 
     class ButtonRenderer extends JButton implements TableCellRenderer {
@@ -374,12 +554,34 @@ public class MOApplicantListUI extends JPanel {
                 );
 
                 if (selected != null && !selected.equals(currentStatus)) {
+
+                    if ("Approved".equals(selected)) {
+                        int approvedCount = MODataStore.getApprovedCountForModule(currentUser.getModuleName());
+                        int positionLimit = MODataStore.getPositionLimitForModule(currentUser.getModuleName());
+
+                        boolean alreadyApproved = "Approved".equals(currentStatus);
+
+                        if (!alreadyApproved && approvedCount >= positionLimit) {
+                            JOptionPane.showMessageDialog(
+                                    button,
+                                    "No more positions available for this module.\n"
+                                            + "Approved: " + approvedCount + " / Limit: " + positionLimit,
+                                    "Approval Limit Reached",
+                                    JOptionPane.WARNING_MESSAGE
+                            );
+                            fireEditingStopped();
+                            return;
+                        }
+                    }
+
                     MODataStore.updateApplicantStatus(
                             applicantId,
                             currentUser.getModuleName(),
                             selected
                     );
                     tableModel.setValueAt(selected, currentRow, 6);
+
+                    refreshLimitDisplay();
 
                     JOptionPane.showMessageDialog(
                             button,
@@ -402,6 +604,36 @@ public class MOApplicantListUI extends JPanel {
         @Override
         public Object getCellEditorValue() {
             return "Update Status";
+        }
+    }
+
+    class StatusColorRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(
+                JTable table, Object value, boolean isSelected,
+                boolean hasFocus, int row, int column
+        ) {
+            Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+
+            if (!isSelected) {
+                c.setBackground(Color.WHITE);
+            }
+
+            String status = value == null ? "" : value.toString();
+
+            if ("Approved".equalsIgnoreCase(status)) {
+                c.setForeground(SUCCESS_COLOR.darker());
+            } else if ("Shortlisted".equalsIgnoreCase(status)) {
+                c.setForeground(new Color(0, 102, 204));
+            } else if ("Rejected".equalsIgnoreCase(status)) {
+                c.setForeground(DANGER_COLOR);
+            } else {
+                c.setForeground(SUBTITLE_COLOR);
+            }
+
+            setHorizontalAlignment(SwingConstants.CENTER);
+            setFont(new Font("Arial", Font.BOLD, 13));
+            return c;
         }
     }
 }
