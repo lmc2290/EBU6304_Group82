@@ -5,7 +5,6 @@ import java.awt.*;
 
 public class MOJobVacancyUI extends JPanel {
     private final User currentUser;
-
     private JTextField moduleNameField;
     private JTextArea responsibilitiesArea;
     private JTextArea requirementsArea;
@@ -26,11 +25,9 @@ public class MOJobVacancyUI extends JPanel {
 
     private JPanel createTitlePanel() {
         JPanel panel = new JPanel(new BorderLayout());
-
         JLabel titleLabel = new JLabel("MO Job Vacancy Creation", SwingConstants.CENTER);
         titleLabel.setFont(new Font("Arial", Font.BOLD, 22));
         titleLabel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-
         panel.add(titleLabel, BorderLayout.CENTER);
         return panel;
     }
@@ -52,30 +49,35 @@ public class MOJobVacancyUI extends JPanel {
         gbc.gridx = 0;
         gbc.gridy = 0;
         formPanel.add(new JLabel("Module Name:"), gbc);
+
         gbc.gridx = 1;
         formPanel.add(moduleNameField, gbc);
 
         gbc.gridx = 0;
         gbc.gridy = 1;
         formPanel.add(new JLabel("Responsibilities:"), gbc);
+
         gbc.gridx = 1;
         formPanel.add(new JScrollPane(responsibilitiesArea), gbc);
 
         gbc.gridx = 0;
         gbc.gridy = 2;
         formPanel.add(new JLabel("Requirements:"), gbc);
+
         gbc.gridx = 1;
         formPanel.add(new JScrollPane(requirementsArea), gbc);
 
         gbc.gridx = 0;
         gbc.gridy = 3;
         formPanel.add(new JLabel("Positions:"), gbc);
+
         gbc.gridx = 1;
         formPanel.add(positionsField, gbc);
 
         gbc.gridx = 0;
         gbc.gridy = 4;
-        formPanel.add(new JLabel("Deadline:"), gbc);
+        formPanel.add(new JLabel("Deadline (YYYY-MM-DD):"), gbc);
+
         gbc.gridx = 1;
         formPanel.add(deadlineField, gbc);
 
@@ -127,7 +129,8 @@ public class MOJobVacancyUI extends JPanel {
                 "Pending Review"
         );
 
-        MockDataManager.addModule(module);
+        MODataStore.addModule(module);
+
         JOptionPane.showMessageDialog(this, "Job vacancy submitted successfully.");
         clearForm();
     }
