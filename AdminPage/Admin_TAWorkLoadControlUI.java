@@ -20,8 +20,10 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
     private int currentLimit = 3;
     private int warningHourLimit = 5;
 
+    // File paths for Interoperability (2.1)
     private final File configFile = new File("limit_config.txt");
     private final File hourConfigFile = new File("hour_limit_config.txt");
+    private final File taDataFile = new File("ta_workload_data.csv"); // Main data file for TA-Admin-MO sync
 
     // UI Style Constants
     private final Color PRIMARY_BLUE = new Color(41, 128, 185);
@@ -40,7 +42,9 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         loadLimitFromFile();
         loadHourLimitFromFile();
         initializeUI();
-        addMockData();
+        
+        // 2.1: Load real data from CSV instead of hardcoded mock data
+        loadTADataFromFile();
     }
 
     private void loadLimitFromFile() {
@@ -72,6 +76,40 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
             pw.println(warningHourLimit);
         } catch (IOException e) {
             JOptionPane.showMessageDialog(this, "Save failed: " + e.getMessage());
+        }
+    }
+
+    // New for 2.1: Load TA workload data from CSV
+    private void loadTADataFromFile() {
+        tableModel.setRowCount(0); // Clear current table
+        if (!taDataFile.exists()) {
+            saveInitialTAData(); // Create a default file if it doesn't exist
+            return;
+        }
+        try (BufferedReader br = new BufferedReader(new FileReader(taDataFile))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                if (line.trim().isEmpty()) continue;
+                String[] parts = line.split(",");
+                if (parts.length >= 5) {
+                    tableModel.addRow(parts);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // New for 2.1: Create initial data file for testing
+    private void saveInitialTAData() {
+        try (PrintWriter pw = new PrintWriter(new FileWriter(taDataFile))) {
+            pw.println("ID-901,Alice Johnson,3,5,alice.j@uni.edu");
+            pw.println("ID-722,Bob Smith,2,2,bob@uni.edu");
+            pw.println("ID-553,Charlie Brown,1,4,charlie@uni.edu");
+            pw.println("ID-104,David Wilson,2,1,d.wilson@uni.edu");
+            loadTADataFromFile(); // Reload after saving
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -176,7 +214,6 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         add(bottomPanel, BorderLayout.SOUTH);
     }
 
-    // Create consistent styled buttons
     private JButton createStyledButton(String text, Color bg, boolean isPrimary) {
         JButton btn = new JButton(text);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
@@ -189,16 +226,13 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         return btn;
     }
 
-    // Configure table sorting and highlight logic
     private void setupTableLogic() {
-        // Sort by workload hours descending
         TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
         taTable.setRowSorter(sorter);
         List<RowSorter.SortKey> keys = new ArrayList<>();
         keys.add(new RowSorter.SortKey(3, SortOrder.DESCENDING));
         sorter.setSortKeys(keys);
 
-        // Highlight overload entries in red
         taTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable t, Object v, boolean isS, boolean hasF, int r, int c) {
@@ -206,15 +240,16 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
                 label.setBorder(new EmptyBorder(0, 10, 0, 0));
 
                 int modelRow = t.convertRowIndexToModel(r);
-                int hours = Integer.parseInt(t.getModel().getValueAt(modelRow, 3).toString());
-
-                if (hours > warningHourLimit) {
-                    label.setForeground(DANGER_RED);
-                    label.setFont(new Font("Segoe UI", Font.BOLD, 15));
-                } else {
-                    label.setForeground(TEXT_DARK);
-                    label.setFont(MAIN_FONT);
-                }
+                try {
+                    int hours = Integer.parseInt(t.getModel().getValueAt(modelRow, 3).toString());
+                    if (hours > warningHourLimit) {
+                        label.setForeground(DANGER_RED);
+                        label.setFont(new Font("Segoe UI", Font.BOLD, 15));
+                    } else {
+                        label.setForeground(TEXT_DARK);
+                        label.setFont(MAIN_FONT);
+                    }
+                } catch (Exception e) {}
 
                 if (!isS) label.setBackground(Color.WHITE);
                 return label;
@@ -244,7 +279,6 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         }
     }
 
-    // ===================== CSV Export =====================
     private void exportDataToCSV() {
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setDialogTitle("Export to CSV");
@@ -297,13 +331,5 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
             value = "\"" + value.replace("\"", "\"\"") + "\"";
         }
         return value;
-    }
-
-    // Add test data to table
-    private void addMockData() {
-        tableModel.addRow(new Object[]{"ID-901", "Alice Johnson", "3", "5", "alice.j@uni.edu"});
-        tableModel.addRow(new Object[]{"ID-722", "Bob Smith", "2", "2", "b.smith@uni.edu"});
-        tableModel.addRow(new Object[]{"ID-553", "Charlie Brown", "1", "4", "charlie@uni.edu"});
-        tableModel.addRow(new Object[]{"ID-104", "David Wilson", "2", "1", "d.wilson@uni.edu"});
     }
 }
