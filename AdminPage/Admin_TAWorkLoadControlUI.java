@@ -1,6 +1,8 @@
-package LoginPage;
+package AdminPage;
 
+import LoginPage.User;
 import java.awt.*;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.*;
@@ -11,9 +13,15 @@ import javax.swing.table.*;
 public class Admin_TAWorkLoadControlUI extends JPanel {
     private final User currentUser;
     private JLabel currentLimitLabel;
+    private JLabel hourLimitLabel;
     private JTable taTable;
     private DefaultTableModel tableModel;
+
     private int currentLimit = 3;
+    private int warningHourLimit = 5;
+
+    private final File configFile = new File("limit_config.txt");
+    private final File hourConfigFile = new File("hour_limit_config.txt");
 
     // UI Style Constants
     private final Color PRIMARY_BLUE = new Color(41, 128, 185);
@@ -29,8 +37,42 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         this.setBackground(BG_LIGHT);
         this.setBorder(new EmptyBorder(30, 40, 30, 40));
 
+        loadLimitFromFile();
+        loadHourLimitFromFile();
         initializeUI();
         addMockData();
+    }
+
+    private void loadLimitFromFile() {
+        if (!configFile.exists()) return;
+        try (BufferedReader br = new BufferedReader(new FileReader(configFile))) {
+            String line = br.readLine();
+            if (line != null) currentLimit = Integer.parseInt(line.trim());
+        } catch (Exception e) { currentLimit = 3; }
+    }
+
+    private void saveLimitToFile() {
+        try (PrintWriter pw = new PrintWriter(new FileWriter(configFile))) {
+            pw.println(currentLimit);
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, "Save failed: " + e.getMessage());
+        }
+    }
+
+    private void loadHourLimitFromFile() {
+        if (!hourConfigFile.exists()) return;
+        try (BufferedReader br = new BufferedReader(new FileReader(hourConfigFile))) {
+            String line = br.readLine();
+            if (line != null) warningHourLimit = Integer.parseInt(line.trim());
+        } catch (Exception e) { warningHourLimit = 5; }
+    }
+
+    private void saveHourLimitToFile() {
+        try (PrintWriter pw = new PrintWriter(new FileWriter(hourConfigFile))) {
+            pw.println(warningHourLimit);
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, "Save failed: " + e.getMessage());
+        }
     }
 
     // Initialize all UI components
@@ -52,7 +94,7 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         add(headerPanel, BorderLayout.NORTH);
 
         // Table setup
-        String[] columnNames = {"ID", "Name", "Workload (Hrs)", "Contact Email"};
+        String[] columnNames = {"ID", "Name", "Enrolled Courses", "Total Work Hours", "Contact Email"};
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
@@ -92,19 +134,34 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         JPanel limitPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 20));
         limitPanel.setOpaque(false);
 
-        currentLimitLabel = new JLabel("Status: Limit is set to " + currentLimit);
+        currentLimitLabel = new JLabel("Status: Max Courses per TA: " + currentLimit);
         currentLimitLabel.setFont(MAIN_FONT);
-
         JTextField limitField = new JTextField(4);
         limitField.setPreferredSize(new Dimension(50, 35));
         limitField.setHorizontalAlignment(JTextField.CENTER);
+        JButton setBtn = createStyledButton("Set Course Limit", PRIMARY_BLUE, true);
+        setBtn.addActionListener(e -> {
+            updateLimit(limitField.getText());
+            limitField.setText("");
+        });
 
-        JButton setBtn = createStyledButton("Set New Limit", PRIMARY_BLUE, true);
-        setBtn.addActionListener(e -> updateLimit(limitField.getText()));
+        hourLimitLabel = new JLabel("Warning Hours: " + warningHourLimit);
+        hourLimitLabel.setFont(MAIN_FONT);
+        JTextField hourField = new JTextField(4);
+        hourField.setPreferredSize(new Dimension(50, 35));
+        hourField.setHorizontalAlignment(JTextField.CENTER);
+        JButton setHourBtn = createStyledButton("Set Hour Warning", PRIMARY_BLUE, true);
+        setHourBtn.addActionListener(e -> {
+            updateHourLimit(hourField.getText());
+            hourField.setText("");
+        });
 
         limitPanel.add(currentLimitLabel);
         limitPanel.add(limitField);
         limitPanel.add(setBtn);
+        limitPanel.add(hourLimitLabel);
+        limitPanel.add(hourField);
+        limitPanel.add(setHourBtn);
 
         // Export button section
         JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 20));
@@ -138,7 +195,7 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
         taTable.setRowSorter(sorter);
         List<RowSorter.SortKey> keys = new ArrayList<>();
-        keys.add(new RowSorter.SortKey(2, SortOrder.DESCENDING));
+        keys.add(new RowSorter.SortKey(3, SortOrder.DESCENDING));
         sorter.setSortKeys(keys);
 
         // Highlight overload entries in red
@@ -149,9 +206,9 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
                 label.setBorder(new EmptyBorder(0, 10, 0, 0));
 
                 int modelRow = t.convertRowIndexToModel(r);
-                int workload = Integer.parseInt(t.getModel().getValueAt(modelRow, 2).toString());
+                int hours = Integer.parseInt(t.getModel().getValueAt(modelRow, 3).toString());
 
-                if (workload > currentLimit) {
+                if (hours > warningHourLimit) {
                     label.setForeground(DANGER_RED);
                     label.setFont(new Font("Segoe UI", Font.BOLD, 15));
                 } else {
@@ -165,27 +222,88 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         });
     }
 
-    // Update workload limit value
     private void updateLimit(String input) {
         try {
             currentLimit = Integer.parseInt(input.trim());
-            currentLimitLabel.setText("Status: Limit is set to " + currentLimit);
+            currentLimitLabel.setText("Status: Max Courses per TA: " + currentLimit);
+            saveLimitToFile();
             taTable.repaint();
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Please enter a valid number.");
         }
     }
 
-    // Placeholder for CSV export function
+    private void updateHourLimit(String input) {
+        try {
+            warningHourLimit = Integer.parseInt(input.trim());
+            hourLimitLabel.setText("Warning Hours: " + warningHourLimit);
+            saveHourLimitToFile();
+            taTable.repaint();
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Please enter a valid number.");
+        }
+    }
+
+    // ===================== CSV Export =====================
     private void exportDataToCSV() {
-        JOptionPane.showMessageDialog(this, "Export function triggered!");
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Export to CSV");
+        fileChooser.setSelectedFile(new File("TA_Workload_" + System.currentTimeMillis() + ".csv"));
+        int userSelection = fileChooser.showSaveDialog(this);
+
+        if (userSelection != JFileChooser.APPROVE_OPTION) {
+            JOptionPane.showMessageDialog(this, "Export cancelled.");
+            return;
+        }
+
+        File fileToSave = fileChooser.getSelectedFile();
+        if (!fileToSave.getName().endsWith(".csv")) {
+            fileToSave = new File(fileToSave.getParentFile(), fileToSave.getName() + ".csv");
+        }
+
+        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileToSave), "UTF-8"))) {
+            DefaultTableModel model = (DefaultTableModel) taTable.getModel();
+            int columnCount = model.getColumnCount();
+
+            for (int i = 0; i < columnCount; i++) {
+                writer.write(escapeCsvValue(model.getColumnName(i)));
+                if (i < columnCount - 1) writer.write(",");
+            }
+            writer.newLine();
+
+            int rowCount = taTable.getRowCount();
+            for (int i = 0; i < rowCount; i++) {
+                int modelRow = taTable.convertRowIndexToModel(i);
+                for (int j = 0; j < columnCount; j++) {
+                    Object val = model.getValueAt(modelRow, j);
+                    String cell = val == null ? "" : val.toString();
+                    writer.write(escapeCsvValue(cell));
+                    if (j < columnCount - 1) writer.write(",");
+                }
+                writer.newLine();
+            }
+
+            JOptionPane.showMessageDialog(this, "Export successful!\nSaved to: " + fileToSave.getAbsolutePath());
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Export failed: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private String escapeCsvValue(String value) {
+        if (value.startsWith("=") || value.startsWith("+") || value.startsWith("-") || value.startsWith("@")) {
+            value = "'" + value;
+        }
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            value = "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
     }
 
     // Add test data to table
     private void addMockData() {
-        tableModel.addRow(new Object[]{"ID-901", "Alice Johnson", "5", "alice.j@uni.edu"});
-        tableModel.addRow(new Object[]{"ID-722", "Bob Smith", "2", "b.smith@uni.edu"});
-        tableModel.addRow(new Object[]{"ID-553", "Charlie Brown", "4", "charlie@uni.edu"});
-        tableModel.addRow(new Object[]{"ID-104", "David Wilson", "1", "d.wilson@uni.edu"});
+        tableModel.addRow(new Object[]{"ID-901", "Alice Johnson", "3", "5", "alice.j@uni.edu"});
+        tableModel.addRow(new Object[]{"ID-722", "Bob Smith", "2", "2", "b.smith@uni.edu"});
+        tableModel.addRow(new Object[]{"ID-553", "Charlie Brown", "1", "4", "charlie@uni.edu"});
+        tableModel.addRow(new Object[]{"ID-104", "David Wilson", "2", "1", "d.wilson@uni.edu"});
     }
 }

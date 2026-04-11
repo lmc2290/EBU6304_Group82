@@ -1,15 +1,14 @@
 package LoginPage;
 
-import javax.swing.*;
-import javax.swing.RowFilter;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableCellEditor;
-import javax.swing.table.TableCellRenderer;
-import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellRenderer;
+import javax.swing.table.TableRowSorter;
 import javax.swing.table.DefaultTableCellRenderer;
+
 public class MOApplicantListUI extends JPanel {
     private final User currentUser;
 
