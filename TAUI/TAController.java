@@ -1,26 +1,41 @@
 package TAUI;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Control Class
- * Handles the business logic for the TA side, connecting the UI and data.
+ * Control Class: TA Controller
+ * Handles the core business logic, data routing, and persistence (mock database)
+ * for the Teaching Assistant application system. It acts as the central hub between
+ * UI components and the underlying data entities.
+ * * @version 2.0 (Updated with US-07 & US-08 Application Management Architecture)
  */
 public class TAController {
 
+    // Central repository for all available job postings
     private List<Job> allJobs;
 
-    // [Feature]: Data Isolation.
-    // Use a Map to bind CV lists to specific User IDs. Key: userId, Value: List of CVRecords.
+    // [Feature US-03]: Data Isolation for CVs.
+    // Key: userId, Value: List of CVRecords uploaded by that user.
     private Map<String, List<CVRecord>> userCVsMap;
 
+    // [Feature US-07 & US-08]: Data Isolation for Applications.
+    // Key: userId, Value: List of ApplicationRecords submitted by that user.
+    private Map<String, List<ApplicationRecord>> userApplicationsMap;
+
+    /**
+     * Default constructor. Initializes the data structures and populates the
+     * system with mock job data for demonstration purposes.
+     */
     public TAController() {
         allJobs = new ArrayList<>();
 
+        // Mock Data: Initializing Job Postings
         allJobs.add(new Job("J01", "Java Lab Assistant", "ECS401", "10 hours/week", "£15/hr", "1:5",
                 "Assist students with Java lab exercises and mark weekly assignments.", false,
                 "Lab Assistant", "Java"));
@@ -33,14 +48,22 @@ public class TAController {
                 "Grade MATLAB scripts for communication systems and signal processing assignments. (Deadline Passed)", true,
                 "Grader", "MATLAB"));
 
-        // Initialize the Map
+        // Initialize the Maps for user data isolation
         userCVsMap = new HashMap<>();
+        userApplicationsMap = new HashMap<>();
     }
+
+    // ==========================================
+    // Core Job Retrieval and Filtering Logic
+    // ==========================================
 
     public List<Job> getAllJobs() {
         return allJobs;
     }
 
+    /**
+     * Filters the central job list based on multiple criteria provided by the UI.
+     */
     public List<Job> filterJobs(String module, String status, String jobType, String skills, String keyword) {
         List<Job> filtered = new ArrayList<>();
 
@@ -70,9 +93,10 @@ public class TAController {
 
     /**
      * Retrieves the CV list for a specific user.
-     * Creates an empty list if the user has no uploaded CVs yet.
+     * Creates an empty list if the user has no uploaded CVs yet to prevent NullPointerExceptions.
      */
     public List<CVRecord> getUploadedCVs(String userId) {
+        if (userId == null || userId.isEmpty()) return new ArrayList<>();
         return userCVsMap.computeIfAbsent(userId, k -> new ArrayList<>());
     }
 
@@ -87,10 +111,8 @@ public class TAController {
             return "Invalid format. Only .pdf and .docx are allowed.";
         }
 
-        // Get the specific CV list for the current logged-in user
         List<CVRecord> myCVs = getUploadedCVs(userId);
 
-        // Check for duplicates within this user's list
         for (CVRecord cv : myCVs) {
             if (cv.getOriginalName().equals(originalName)) {
                 return "A CV with this name already exists in your list.";
@@ -109,9 +131,8 @@ public class TAController {
 
             File targetFile = new File(targetDir, storedName);
 
-            java.nio.file.Files.copy(file.toPath(), targetFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(file.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
-            // Add the CV record to the specific user's list
             myCVs.add(new CVRecord(originalName, storedName));
             return null;
 
@@ -139,20 +160,79 @@ public class TAController {
             return false;
         }
 
-        // Remove from the specific user's list
         List<CVRecord> myCVs = getUploadedCVs(userId);
         return myCVs.remove(cvRecord);
     }
 
     // ==========================================
-    // US-06: Submit Application Logic
+    // US-07 & US-08: Application Lifecycle Management
     // ==========================================
-    public boolean submitApplication(Job job, String cvName, String coverLetter) {
-        System.out.println("=== Application Submitted ===");
-        System.out.println("Target Job: " + job.getTitle());
-        System.out.println("Selected CV: " + cvName);
-        System.out.println("Cover Letter Length: " + coverLetter.length() + " chars");
-        System.out.println("=============================");
-        return true;
+
+    /**
+     * Retrieves the complete list of job applications for a specific user.
+     * Implements defensive programming to guarantee a non-null return value.
+     * * @param userId The unique identifier of the applicant.
+     * @return A List containing all ApplicationRecords for the user.
+     */
+    public List<ApplicationRecord> getUserApplications(String userId) {
+        if (userId == null || userId.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        return userApplicationsMap.computeIfAbsent(userId, k -> new ArrayList<>());
+    }
+
+    /**
+     * Core business logic to process and persist a new job application.
+     * Validates input, prevents duplicates, and records the transaction.
+     * * @param targetJob   The Job entity being applied to.
+     * @param userId      The unique ID of the user submitting the application.
+     * @param selectedCV  The specific CVRecord chosen for this application.
+     * @param coverLetter The submitted cover letter text (can be empty).
+     * @return boolean    True if the submission was successful, false otherwise.
+     */
+    public boolean submitApplication(Job targetJob, String userId, CVRecord selectedCV, String coverLetter) {
+
+        // 1. Strict null-check validation
+        if (targetJob == null || userId == null || selectedCV == null) {
+            System.err.println("Validation Error: Missing critical application data.");
+            return false;
+        }
+
+        // 2. Prevent duplicate active applications for the exact same job
+        List<ApplicationRecord> existingApps = getUserApplications(userId);
+        for (ApplicationRecord app : existingApps) {
+            if (app.getTargetJob().getId().equals(targetJob.getId())) {
+                String currentStatus = app.getStatus();
+                // If it's not Withdrawn or Rejected, it means it's active (Pending/Interviewing)
+                if (!currentStatus.equals("Withdrawn") && !currentStatus.equals("Rejected")) {
+                    System.err.println("Duplicate Error: User already has an active application for this job.");
+                    return false;
+                }
+            }
+        }
+
+        try {
+            // 3. Instantiate the new application record entity
+            ApplicationRecord newRecord = new ApplicationRecord(targetJob, userId, selectedCV, coverLetter);
+
+            // 4. Persist the record into the user's isolated application list
+            existingApps.add(newRecord);
+
+            // 5. System logging for debugging and audit trails
+            System.out.println("=== Application Transaction Success ===");
+            System.out.println("Generated App ID: " + newRecord.getApplicationId());
+            System.out.println("Applicant ID: " + userId);
+            System.out.println("Target Position: " + targetJob.getTitle());
+            System.out.println("Selected CV: " + selectedCV.getOriginalName());
+            System.out.println("Timestamp: " + newRecord.getFormattedSubmissionDate());
+            System.out.println("=======================================");
+
+            return true;
+
+        } catch (Exception e) {
+            System.err.println("System Error: Failed to process application record.");
+            e.printStackTrace();
+            return false;
+        }
     }
 }
