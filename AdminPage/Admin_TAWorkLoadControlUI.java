@@ -21,9 +21,9 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
     private int warningHourLimit = 5;
 
     // File paths for Interoperability (2.1)
-    private final File configFile = new File("limit_config.txt");
-    private final File hourConfigFile = new File("hour_limit_config.txt");
-    private final File taDataFile = new File("ta_workload_data.csv"); // Main data file for TA-Admin-MO sync
+    private final File configFile = new File("data/limit_config.txt");
+    private final File hourConfigFile = new File("data/hour_limit_config.txt");
+    private final File taDataFile = new File("data/ta_workload_data.csv"); // Main data file for TA-Admin-MO sync
 
     // UI Style Constants
     private final Color PRIMARY_BLUE = new Color(41, 128, 185);
