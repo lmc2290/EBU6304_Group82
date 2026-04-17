@@ -32,7 +32,7 @@ public class TADashboardUI extends DashBoardUI {
         // 2. Now initialize the controller.
         this.controller = controller;
 
-        // 3. [FIX APPLIED] Safely load the data AFTER the controller is assigned.
+        // 3. Safely load the data AFTER the controller is assigned.
         loadInitialData();
     }
 
