@@ -1,4 +1,4 @@
-package LoginPage.admin;
+package AdminPage;
 
 import java.io.*;
 import java.util.HashMap;
