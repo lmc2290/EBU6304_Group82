@@ -12,7 +12,6 @@ import java.util.List;
 public class TADashboardUI extends DashBoardUI {
 
     private TAController controller;
-
     private JComboBox<String> moduleCombo;
     private JComboBox<String> statusCombo;
     private JComboBox<String> jobTypeCombo;
