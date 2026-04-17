@@ -85,8 +85,7 @@ public class ApplicationDialog extends JDialog {
                 return;
             }
 
-            boolean success = controller.submitApplication(targetJob, selectedCVName, coverLetter);
-
+            boolean success = controller.submitApplication(targetJob, userId, selectedCVRecord, coverLetter);
             if (success) {
                 JOptionPane.showMessageDialog(this,
                         "Application submitted successfully!\nAn email confirmation has been sent.",
