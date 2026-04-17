@@ -34,10 +34,10 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         this.setBorder(new EmptyBorder(30, 40, 30, 40));
 
         initializeUI();
-        
+
         // 1. Load mock/shared data from memory first
         addMockData();
-        
+
         // 2. Load persistent data from CSV file (For Interoperability)
         loadDataFromCSV();
     }
@@ -71,8 +71,20 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         emptyPanel.setOpaque(false);
         bottomPanel.add(emptyPanel, BorderLayout.WEST);
 
-        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 20));
+        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 20));
         actionPanel.setOpaque(false);
+
+        // ===================== 你加的刷新按钮 =====================
+        JButton refreshBtn = createStyledButton("Refresh", PRIMARY_BLUE, true);
+        refreshBtn.addActionListener(e -> {
+            tableModel.setRowCount(0);
+            addMockData();
+            loadDataFromCSV();
+            JOptionPane.showMessageDialog(this, "Data refreshed from CSV!");
+        });
+        actionPanel.add(refreshBtn);
+        // ==========================================================
+
         JButton exportBtn = createStyledButton("Export Excel (CSV)", new Color(46, 204, 113), true);
         exportBtn.addActionListener(e -> exportDataToCSV());
         actionPanel.add(exportBtn);
@@ -260,28 +272,28 @@ public class Admin_CourseApplicationControlUI extends JPanel {
                 currentStatus = "Approved";
                 int row = requestTable.getEditingRow();
                 String moduleId = (String) requestTable.getValueAt(row, 0);
-                
+
                 // Keep existing Mock logic
                 MockDataManager.updateModuleStatus(moduleId, "Approved");
                 // Add persistent file logic
                 updateCSVFile(moduleId, currentStatus);
-                
+
                 fireEditingStopped();
             });
 
             // Reject action with mandatory reason
             rejBtn.addActionListener(e -> {
                 String reason = JOptionPane.showInputDialog(null, "Rejection Reason is REQUIRED:", "Mandatory Feedback", JOptionPane.WARNING_MESSAGE);
-                
+
                 // VALIDATION: Ensure user typed something and didn't click Cancel/Close
                 if (reason != null && !reason.trim().isEmpty()) {
                     currentStatus = "Rejected: " + reason.replace(",", ";");
                     int row = requestTable.getEditingRow();
                     String moduleId = (String) requestTable.getValueAt(row, 0);
-                    
+
                     MockDataManager.updateModuleStatus(moduleId, "Rejected");
                     updateCSVFile(moduleId, currentStatus);
-                    
+
                     fireEditingStopped();
                 } else {
                     // If Cancelled or Empty, don't change anything
