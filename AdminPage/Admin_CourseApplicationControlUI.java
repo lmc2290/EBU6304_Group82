@@ -1,99 +1,108 @@
 package AdminPage;
 
-import LoginPage.MockDataManager;
-import LoginPage.User;
-import java.awt.*;
-import java.io.*;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.*;
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
-// Course Application Approval Panel for Admin
 public class Admin_CourseApplicationControlUI extends JPanel {
+    private final Admin_CourseApplicationControl controller;
     private JTable requestTable;
     private DefaultTableModel tableModel;
-    private TableRowSorter<DefaultTableModel> sorter;
 
-    // UI Style Constants
     private final Color SUCCESS_GREEN = new Color(46, 204, 113);
     private final Color DANGER_RED = new Color(231, 76, 60);
     private final Color BG_LIGHT = new Color(245, 247, 250);
-    private final Color TEXT_DARK = new Color(44, 62, 80);
     private final Color PRIMARY_BLUE = new Color(41, 128, 185);
-    private final Font MAIN_FONT = new Font("Segoe UI", Font.PLAIN, 15);
 
-    // File path for data Interoperability
-    private final String CSV_PATH = "data/modules.csv";
-
-    public Admin_CourseApplicationControlUI(User user) {
-        this.setLayout(new BorderLayout(0, 20));
-        this.setBackground(BG_LIGHT);
-        this.setBorder(new EmptyBorder(30, 40, 30, 40));
-
-        initializeUI();
-
-        // 1. Load mock/shared data from memory first
-        addMockData();
-
-        // 2. Load persistent data from CSV file (For Interoperability)
-        loadDataFromCSV();
+    public Admin_CourseApplicationControlUI(Admin_CourseApplicationControl controller) {
+        this.controller = controller;
+        setLayout(new BorderLayout(0, 20));
+        setBackground(BG_LIGHT);
+        setBorder(new EmptyBorder(30, 40, 30, 40));
+        initUI();
+        controller.setTableModel(tableModel);
+        controller.loadData();
     }
 
-    private void initializeUI() {
+    private void initUI() {
         JLabel title = new JLabel("Module Posting Approval");
         title.setFont(new Font("Segoe UI", Font.BOLD, 28));
         add(title, BorderLayout.NORTH);
 
         String[] columnNames = {"ID", "Module Name", "Organiser", "Content", "Status & Actions"};
         tableModel = new DefaultTableModel(columnNames, 0) {
-            @Override public boolean isCellEditable(int r, int c) {
-                String status = getValueAt(r, 4).toString();
-                return c == 4 && status.contains("Pending");
+            @Override
+            public boolean isCellEditable(int r, int c) {
+                if (c != 4) return false;
+                String status = String.valueOf(getValueAt(r, 4));
+                return status.contains("Pending");
             }
         };
 
         requestTable = new JTable(tableModel);
-        setupTableLogic();
+        setupTableBehavior();
 
-        JScrollPane scrollPane = new JScrollPane(requestTable);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.getViewport().setBackground(Color.WHITE);
-        add(scrollPane, BorderLayout.CENTER);
+        JScrollPane sp = new JScrollPane(requestTable);
+        sp.setBorder(BorderFactory.createEmptyBorder());
+        sp.getViewport().setBackground(Color.WHITE);
+        add(sp, BorderLayout.CENTER);
 
-        JPanel bottomPanel = new JPanel(new BorderLayout());
-        bottomPanel.setOpaque(false);
-        bottomPanel.setPreferredSize(new Dimension(0, 80));
-
-        JPanel emptyPanel = new JPanel();
-        emptyPanel.setOpaque(false);
-        bottomPanel.add(emptyPanel, BorderLayout.WEST);
+        JPanel bottom = new JPanel(new BorderLayout());
+        bottom.setOpaque(false);
+        bottom.setPreferredSize(new Dimension(0, 80));
 
         JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 20));
         actionPanel.setOpaque(false);
 
-        // ===================== 你加的刷新按钮 =====================
-        JButton refreshBtn = createStyledButton("Refresh", PRIMARY_BLUE, true);
+        // ===================== 刷新按钮 + 提示 =====================
+        JButton refreshBtn = createBtn("Refresh", PRIMARY_BLUE);
         refreshBtn.addActionListener(e -> {
-            tableModel.setRowCount(0);
-            addMockData();
-            loadDataFromCSV();
-            JOptionPane.showMessageDialog(this, "Data refreshed from CSV!");
+            controller.loadData();
+            // 和 TA 界面完全一样的提示
+            JOptionPane.showMessageDialog(this, "Course data refreshed successfully!");
         });
+
+        JButton exportBtn = createBtn("Export CSV", SUCCESS_GREEN);
+        exportBtn.addActionListener(e -> controller.exportData());
+
         actionPanel.add(refreshBtn);
-        // ==========================================================
-
-        JButton exportBtn = createStyledButton("Export Excel (CSV)", new Color(46, 204, 113), true);
-        exportBtn.addActionListener(e -> exportDataToCSV());
         actionPanel.add(exportBtn);
-
-        bottomPanel.add(actionPanel, BorderLayout.EAST);
-        add(bottomPanel, BorderLayout.SOUTH);
+        bottom.add(actionPanel, BorderLayout.EAST);
+        add(bottom, BorderLayout.SOUTH);
     }
 
-    private JButton createStyledButton(String text, Color bg, boolean isPrimary) {
+    private void setupTableBehavior() {
+        requestTable.setRowHeight(60);
+        requestTable.setShowVerticalLines(false);
+        requestTable.setIntercellSpacing(new Dimension(0, 0));
+
+        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
+        requestTable.setRowSorter(sorter);
+
+        sorter.setComparator(4, new Comparator<String>() {
+            @Override
+            public int compare(String s1, String s2) {
+                boolean p1 = s1.contains("Pending");
+                boolean p2 = s2.contains("Pending");
+                if (p1 && !p2) return -1;
+                if (!p1 && p2) return 1;
+                return s1.compareTo(s2);
+            }
+        });
+
+        List<RowSorter.SortKey> sortKeys = new ArrayList<>();
+        sortKeys.add(new RowSorter.SortKey(4, SortOrder.ASCENDING));
+        sorter.setSortKeys(sortKeys);
+
+        requestTable.getColumnModel().getColumn(4).setCellRenderer(new StatusRenderer());
+        requestTable.getColumnModel().getColumn(4).setCellEditor(new StatusEditor());
+    }
+
+    private JButton createBtn(String text, Color bg) {
         JButton btn = new JButton(text);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btn.setPreferredSize(new Dimension(160, 40));
@@ -105,144 +114,34 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         return btn;
     }
 
-    private void setupTableLogic() {
-        requestTable.setRowHeight(60);
-        requestTable.setShowVerticalLines(false);
-        requestTable.setIntercellSpacing(new Dimension(0, 0));
-
-        sorter = new TableRowSorter<>(tableModel);
-        requestTable.setRowSorter(sorter);
-
-        sorter.setComparator(4, new Comparator<String>() {
-            @Override
-            public int compare(String s1, String s2) {
-                if (s1.equals(s2)) return 0;
-                if (s1.contains("Pending")) return -1;
-                if (s2.contains("Pending")) return 1;
-                return s1.compareTo(s2);
-            }
-        });
-
-        List<RowSorter.SortKey> sortKeys = new ArrayList<>();
-        sortKeys.add(new RowSorter.SortKey(4, SortOrder.ASCENDING));
-        sorter.setSortKeys(sortKeys);
-
-        requestTable.getColumnModel().getColumn(4).setCellRenderer(new StatusActionRenderer());
-        requestTable.getColumnModel().getColumn(4).setCellEditor(new StatusActionEditor());
+    private JButton createSmallBtn(String text, Color bg) {
+        JButton b = new JButton(text);
+        b.setBackground(bg);
+        b.setForeground(Color.WHITE);
+        b.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        b.setBorderPainted(false);
+        return b;
     }
 
-    private void addMockData() {
-        // Comment out this loop if you don't want duplicate entries from MockDataManager
-        /*
-        List<Module> modules = MockDataManager.getModules();
-        for (Module module : modules) {
-            tableModel.addRow(new Object[]{
-                    module.getModuleName(),
-                    module.getResponsibilities(),
-                    module.getRequirements(),
-                    "VIEW",
-                    module.getStatus()
-            });
-        }
-        */
-        tableModel.addRow(new Object[]{"CS101", "Java Basics", "Prof. Lee", "VIEW", "Pending Review"});
-        tableModel.addRow(new Object[]{"CS202", "Databases", "Dr. Wong", "VIEW", "Pending Review"});
-        tableModel.addRow(new Object[]{"CS303", "AI Intro", "Dr. Chen", "VIEW", "Approved"});
-    }
+    class StatusRenderer extends JPanel implements TableCellRenderer {
+        private final JLabel statusLabel = new JLabel("", SwingConstants.CENTER);
+        private final JPanel btnPanel;
 
-    // ===================== INTEROPERABILITY METHODS =====================
-
-    private void loadDataFromCSV() {
-        File file = new File(CSV_PATH);
-        if (!file.exists()) return;
-        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-            String line;
-            br.readLine(); // skip header
-            while ((line = br.readLine()) != null) {
-                String[] p = line.split(",");
-                if (p.length >= 6) {
-                    // ID(0), Name(0), Organiser(2), View(VIEW), Status(5)
-                    tableModel.addRow(new Object[]{p[0], p[0], p[2], "VIEW", p[5]});
-                }
-            }
-        } catch (Exception e) { e.printStackTrace(); }
-    }
-
-    private void updateCSVFile(String moduleName, String newStatus) {
-        List<String> lines = new ArrayList<>();
-        File file = new File(CSV_PATH);
-        if (!file.exists()) return;
-
-        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                String[] parts = line.split(",");
-                // If it's the target module, update the status column (Index 5)
-                if (parts[0].equalsIgnoreCase(moduleName)) {
-                    parts[5] = newStatus;
-                    line = String.join(",", parts);
-                }
-                lines.add(line);
-            }
-        } catch (Exception e) { e.printStackTrace(); }
-
-        try (PrintWriter pw = new PrintWriter(new FileWriter(file))) {
-            for (String l : lines) pw.println(l);
-        } catch (Exception e) { e.printStackTrace(); }
-    }
-
-    // ===================== EXPORT & UI RENDERING =====================
-
-    private void exportDataToCSV() {
-        JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setDialogTitle("Export to CSV");
-        fileChooser.setSelectedFile(new File("Course_Applications_" + System.currentTimeMillis() + ".csv"));
-        int userSelection = fileChooser.showSaveDialog(this);
-        if (userSelection != JFileChooser.APPROVE_OPTION) return;
-
-        File fileToSave = fileChooser.getSelectedFile();
-        if (!fileToSave.getName().endsWith(".csv")) fileToSave = new File(fileToSave.getParentFile(), fileToSave.getName() + ".csv");
-
-        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileToSave), "UTF-8"))) {
-            for (int i = 0; i < tableModel.getColumnCount(); i++) {
-                writer.write(escapeCsvValue(tableModel.getColumnName(i)) + (i < tableModel.getColumnCount() - 1 ? "," : ""));
-            }
-            writer.newLine();
-            for (int i = 0; i < tableModel.getRowCount(); i++) {
-                int modelRow = requestTable.convertRowIndexToModel(i);
-                for (int j = 0; j < tableModel.getColumnCount(); j++) {
-                    Object val = tableModel.getValueAt(modelRow, j);
-                    writer.write(escapeCsvValue(val != null ? val.toString() : "") + (j < tableModel.getColumnCount() - 1 ? "," : ""));
-                }
-                writer.newLine();
-            }
-            JOptionPane.showMessageDialog(this, "Export successful!");
-        } catch (Exception e) { e.printStackTrace(); }
-    }
-
-    private String escapeCsvValue(String value) {
-        if (value.contains(",") || value.contains("\"")) value = "\"" + value.replace("\"", "\"\"") + "\"";
-        return value;
-    }
-
-    class StatusActionRenderer extends JPanel implements TableCellRenderer {
-        private JLabel statusLabel = new JLabel("", SwingConstants.CENTER);
-        private JPanel btnPanel = new JPanel(new GridLayout(1, 2, 8, 0));
-
-        public StatusActionRenderer() {
+        public StatusRenderer() {
             setLayout(new BorderLayout());
             setBorder(new EmptyBorder(12, 10, 12, 10));
             setOpaque(true);
+            btnPanel = new JPanel(new GridLayout(1, 2, 8, 0));
             btnPanel.setOpaque(false);
-            btnPanel.add(createSmallButton("Approve", SUCCESS_GREEN));
-            btnPanel.add(createSmallButton("Reject", DANGER_RED));
+            btnPanel.add(createSmallBtn("Approve", SUCCESS_GREEN));
+            btnPanel.add(createSmallBtn("Reject", DANGER_RED));
             statusLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
         }
 
         @Override
-        public Component getTableCellRendererComponent(JTable t, Object v, boolean isS, boolean hasF, int r, int c) {
-            String status = v.toString();
-            setBackground(isS ? t.getSelectionBackground() : Color.WHITE);
+        public Component getTableCellRendererComponent(JTable t, Object v, boolean isSel, boolean hasF, int r, int c) {
+            String status = String.valueOf(v);
+            setBackground(isSel ? t.getSelectionBackground() : Color.WHITE);
             removeAll();
             if (status.contains("Pending")) {
                 add(btnPanel, BorderLayout.CENTER);
@@ -255,74 +154,60 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         }
     }
 
-    class StatusActionEditor extends DefaultCellEditor {
-        private JPanel panel;
+    class StatusEditor extends DefaultCellEditor {
+        private final JPanel panel;
         private String currentStatus;
 
-        public StatusActionEditor() {
+        public StatusEditor() {
             super(new JCheckBox());
             panel = new JPanel(new GridLayout(1, 2, 8, 0));
             panel.setBorder(new EmptyBorder(12, 10, 12, 10));
 
-            JButton appBtn = createSmallButton("Approve", SUCCESS_GREEN);
-            JButton rejBtn = createSmallButton("Reject", DANGER_RED);
+            JButton btnApp = createSmallBtn("Approve", SUCCESS_GREEN);
+            JButton btnRej = createSmallBtn("Reject", DANGER_RED);
 
-            // Approve action
-            appBtn.addActionListener(e -> {
+            btnApp.addActionListener(e -> {
                 currentStatus = "Approved";
                 int row = requestTable.getEditingRow();
-                String moduleId = (String) requestTable.getValueAt(row, 0);
-
-                // Keep existing Mock logic
-                MockDataManager.updateModuleStatus(moduleId, "Approved");
-                // Add persistent file logic
-                updateCSVFile(moduleId, currentStatus);
-
+                String id = String.valueOf(requestTable.getValueAt(row, 0));
+                controller.approveModule(id);
                 fireEditingStopped();
             });
 
-            // Reject action with mandatory reason
-            rejBtn.addActionListener(e -> {
-                String reason = JOptionPane.showInputDialog(null, "Rejection Reason is REQUIRED:", "Mandatory Feedback", JOptionPane.WARNING_MESSAGE);
+            btnRej.addActionListener(e -> {
+                String reason = JOptionPane.showInputDialog(null,
+                        "Rejection Reason is REQUIRED:",
+                        "Mandatory Feedback",
+                        JOptionPane.WARNING_MESSAGE);
 
-                // VALIDATION: Ensure user typed something and didn't click Cancel/Close
-                if (reason != null && !reason.trim().isEmpty()) {
+                if (reason != null && !reason.isBlank()) {
                     currentStatus = "Rejected: " + reason.replace(",", ";");
                     int row = requestTable.getEditingRow();
-                    String moduleId = (String) requestTable.getValueAt(row, 0);
-
-                    MockDataManager.updateModuleStatus(moduleId, "Rejected");
-                    updateCSVFile(moduleId, currentStatus);
-
+                    String id = String.valueOf(requestTable.getValueAt(row, 0));
+                    controller.rejectModule(id, reason);
                     fireEditingStopped();
                 } else {
-                    // If Cancelled or Empty, don't change anything
                     cancelCellEditing();
-                    if (reason != null) { // Clicked OK but empty
-                        JOptionPane.showMessageDialog(null, "Reject action aborted: Reason cannot be empty.");
+                    if (reason != null) {
+                        JOptionPane.showMessageDialog(null, "Reason cannot be empty.");
                     }
                 }
             });
 
-            panel.add(appBtn);
-            panel.add(rejBtn);
+            panel.add(btnApp);
+            panel.add(btnRej);
         }
 
-        @Override public Component getTableCellEditorComponent(JTable t, Object v, boolean isS, int r, int c) {
+        @Override
+        public Component getTableCellEditorComponent(JTable t, Object v, boolean isSel, int r, int c) {
             panel.setBackground(t.getSelectionBackground());
-            currentStatus = v.toString();
+            currentStatus = String.valueOf(v);
             return panel;
         }
 
-        @Override public Object getCellEditorValue() { return currentStatus; }
-    }
-
-    private JButton createSmallButton(String text, Color bg) {
-        JButton b = new JButton(text);
-        b.setBackground(bg);
-        b.setForeground(Color.WHITE);
-        b.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        b.setBorderPainted(false);
-        return b;
+        @Override
+        public Object getCellEditorValue() {
+            return currentStatus;
+        }
     }
 }
