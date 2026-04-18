@@ -29,10 +29,12 @@ public class Admin_CourseApplicationControlUI extends JPanel {
     }
 
     private void initUI() {
+        // Title label
         JLabel title = new JLabel("Module Posting Approval");
         title.setFont(new Font("Segoe UI", Font.BOLD, 28));
         add(title, BorderLayout.NORTH);
 
+        // Table model with non-editable cells except status column
         String[] columnNames = {"ID", "Module Name", "Organiser", "Content", "Status & Actions"};
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
@@ -46,11 +48,13 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         requestTable = new JTable(tableModel);
         setupTableBehavior();
 
+        // Scroll pane for table
         JScrollPane sp = new JScrollPane(requestTable);
         sp.setBorder(BorderFactory.createEmptyBorder());
         sp.getViewport().setBackground(Color.WHITE);
         add(sp, BorderLayout.CENTER);
 
+        // Bottom action panel
         JPanel bottom = new JPanel(new BorderLayout());
         bottom.setOpaque(false);
         bottom.setPreferredSize(new Dimension(0, 80));
@@ -58,14 +62,14 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 20));
         actionPanel.setOpaque(false);
 
-        // ===================== 刷新按钮 + 提示 =====================
+        // Refresh button with notification
         JButton refreshBtn = createBtn("Refresh", PRIMARY_BLUE);
         refreshBtn.addActionListener(e -> {
             controller.loadData();
-            // 和 TA 界面完全一样的提示
             JOptionPane.showMessageDialog(this, "Course data refreshed successfully!");
         });
 
+        // Export CSV button
         JButton exportBtn = createBtn("Export CSV", SUCCESS_GREEN);
         exportBtn.addActionListener(e -> controller.exportData());
 
@@ -75,6 +79,7 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         add(bottom, BorderLayout.SOUTH);
     }
 
+    // Table appearance and sorting settings
     private void setupTableBehavior() {
         requestTable.setRowHeight(60);
         requestTable.setShowVerticalLines(false);
@@ -83,6 +88,7 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
         requestTable.setRowSorter(sorter);
 
+        // Sort to show Pending items first
         sorter.setComparator(4, new Comparator<String>() {
             @Override
             public int compare(String s1, String s2) {
@@ -98,10 +104,12 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         sortKeys.add(new RowSorter.SortKey(4, SortOrder.ASCENDING));
         sorter.setSortKeys(sortKeys);
 
+        // Custom render and editor for status column
         requestTable.getColumnModel().getColumn(4).setCellRenderer(new StatusRenderer());
         requestTable.getColumnModel().getColumn(4).setCellEditor(new StatusEditor());
     }
 
+    // Create styled navigation button
     private JButton createBtn(String text, Color bg) {
         JButton btn = new JButton(text);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
@@ -114,6 +122,7 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         return btn;
     }
 
+    // Create small approve/reject buttons
     private JButton createSmallBtn(String text, Color bg) {
         JButton b = new JButton(text);
         b.setBackground(bg);
@@ -123,6 +132,7 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         return b;
     }
 
+    // Custom renderer for status column
     class StatusRenderer extends JPanel implements TableCellRenderer {
         private final JLabel statusLabel = new JLabel("", SwingConstants.CENTER);
         private final JPanel btnPanel;
@@ -154,6 +164,7 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         }
     }
 
+    // Custom editor for status operations
     class StatusEditor extends DefaultCellEditor {
         private final JPanel panel;
         private String currentStatus;
@@ -166,6 +177,7 @@ public class Admin_CourseApplicationControlUI extends JPanel {
             JButton btnApp = createSmallBtn("Approve", SUCCESS_GREEN);
             JButton btnRej = createSmallBtn("Reject", DANGER_RED);
 
+            // Approve action
             btnApp.addActionListener(e -> {
                 currentStatus = "Approved";
                 int row = requestTable.getEditingRow();
@@ -174,6 +186,7 @@ public class Admin_CourseApplicationControlUI extends JPanel {
                 fireEditingStopped();
             });
 
+            // Reject action with reason input
             btnRej.addActionListener(e -> {
                 String reason = JOptionPane.showInputDialog(null,
                         "Rejection Reason is REQUIRED:",

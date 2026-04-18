@@ -32,7 +32,6 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
     }
 
     private void initializeUI() {
-        // 标题
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setOpaque(false);
         JLabel titleLabel = new JLabel("TA Workload Dashboard");
@@ -45,7 +44,6 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         headerPanel.add(subTitle, BorderLayout.SOUTH);
         add(headerPanel, BorderLayout.NORTH);
 
-        // 表格
         String[] cols = {"ID", "Name", "Enrolled Courses", "Total Work Hours", "Contact Email"};
         tableModel = new DefaultTableModel(cols, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
@@ -72,18 +70,15 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         sp.getViewport().setBackground(Color.WHITE);
         add(sp, BorderLayout.CENTER);
 
-        // 底部面板
         JPanel bottomPanel = new JPanel(new BorderLayout());
         bottomPanel.setOpaque(false);
         bottomPanel.setPreferredSize(new Dimension(0,120));
 
-        // 1. 上下布局的限制设置面板
         JPanel limitPanel = new JPanel();
         limitPanel.setLayout(new BoxLayout(limitPanel, BoxLayout.Y_AXIS));
         limitPanel.setOpaque(false);
         limitPanel.setBorder(new EmptyBorder(0, 0, 10, 0));
 
-        // 第一行：课程限制
         JPanel courseLimitRow = new JPanel(new FlowLayout(FlowLayout.LEFT,10,0));
         courseLimitRow.setOpaque(false);
         currentLimitLabel = new JLabel();
@@ -100,7 +95,6 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         courseLimitRow.add(limitField);
         courseLimitRow.add(setBtn);
 
-        // 第二行：小时警告
         JPanel hourLimitRow = new JPanel(new FlowLayout(FlowLayout.LEFT,10,10));
         hourLimitRow.setOpaque(false);
         hourLimitLabel = new JLabel();
@@ -120,11 +114,9 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         limitPanel.add(courseLimitRow);
         limitPanel.add(hourLimitRow);
 
-        // 2. 右侧按钮面板（刷新 + 导出）
         JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT,10,0));
         actionPanel.setOpaque(false);
 
-        // 新增：刷新按钮
         JButton refreshBtn = createStyledButton("Refresh", PRIMARY_BLUE);
         refreshBtn.addActionListener(e -> {
             controller.loadTADataFromFile();
@@ -145,7 +137,6 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         add(bottomPanel, BorderLayout.SOUTH);
     }
 
-    // 统一刷新文字
     public void refreshLimitLabels() {
         currentLimitLabel.setText("Status: Max Courses per TA: " + controller.currentLimit);
         hourLimitLabel.setText("Warning Hours: " + controller.warningHourLimit);
@@ -192,7 +183,6 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         return b;
     }
 
-    // Getter
     public JTable getTaTable() { return taTable; }
     public DefaultTableModel getTableModel() { return tableModel; }
 }

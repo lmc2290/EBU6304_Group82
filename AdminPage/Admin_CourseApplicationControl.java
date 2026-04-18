@@ -25,6 +25,7 @@ public class Admin_CourseApplicationControl {
         this.tableModel = model;
     }
 
+    // Load table data from mock and CSV
     public void loadData() {
         if (tableModel == null) return;
         tableModel.setRowCount(0);
@@ -32,12 +33,14 @@ public class Admin_CourseApplicationControl {
         loadDataFromCSV();
     }
 
+    // Add initial test data
     public void addMockData() {
         tableModel.addRow(new Object[]{"CS101", "Java Basics", "Prof. Lee", "VIEW", "Pending Review"});
         tableModel.addRow(new Object[]{"CS202", "Databases", "Dr. Wong", "VIEW", "Pending Review"});
         tableModel.addRow(new Object[]{"CS303", "AI Intro", "Dr. Chen", "VIEW", "Approved"});
     }
 
+    // Load module records from CSV file
     public void loadDataFromCSV() {
         File file = new File(CSV_PATH);
         if (!file.exists()) return;
@@ -56,17 +59,20 @@ public class Admin_CourseApplicationControl {
         }
     }
 
+    // Approve module application
     public void approveModule(String moduleId) {
         MockDataManager.updateModuleStatus(moduleId, "Approved");
         updateCSVFile(moduleId, "Approved");
     }
 
+    // Reject module application with reason
     public void rejectModule(String moduleId, String reason) {
         String status = "Rejected: " + reason.replace(",", ";");
         MockDataManager.updateModuleStatus(moduleId, "Rejected");
         updateCSVFile(moduleId, status);
     }
 
+    // Update status in CSV file
     public void updateCSVFile(String moduleName, String newStatus) {
         List<String> lines = new ArrayList<>();
         File file = new File(CSV_PATH);
@@ -93,6 +99,7 @@ public class Admin_CourseApplicationControl {
         }
     }
 
+    // Export table data to CSV file
     public void exportData() {
         if (tableModel == null) return;
 
@@ -133,6 +140,7 @@ public class Admin_CourseApplicationControl {
         }
     }
 
+    // Escape special characters for CSV format
     private String escapeCsvValue(String value) {
         if (value.contains(",") || value.contains("\"")) {
             value = "\"" + value.replace("\"", "\"\"") + "\"";
