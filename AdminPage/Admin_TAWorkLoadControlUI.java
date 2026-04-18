@@ -1,229 +1,145 @@
 package AdminPage;
 
-import LoginPage.User;
-import java.awt.*;
-import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.*;
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
 
-// TA Workload Management Panel for Admin
 public class Admin_TAWorkLoadControlUI extends JPanel {
-    private final User currentUser;
+    private final Admin_TAWorkLoadControl controller;
+
     private JLabel currentLimitLabel;
     private JLabel hourLimitLabel;
     private JTable taTable;
     private DefaultTableModel tableModel;
 
-    private int currentLimit = 3;
-    private int warningHourLimit = 5;
-
-    // File paths for Interoperability (2.1)
-    private final File configFile = new File("data/limit_config.txt");
-    private final File hourConfigFile = new File("data/hour_limit_config.txt");
-    private final File taDataFile = new File("data/ta_workload_data.csv"); // Main data file for TA-Admin-MO sync
-
-    // UI Style Constants
     private final Color PRIMARY_BLUE = new Color(41, 128, 185);
     private final Color DANGER_RED = new Color(231, 76, 60);
     private final Color BG_LIGHT = new Color(245, 247, 250);
     private final Color TEXT_DARK = new Color(44, 62, 80);
+    private final Color SUCCESS_GREEN = new Color(46, 204, 113);
     private final Font MAIN_FONT = new Font("Segoe UI", Font.PLAIN, 15);
     private final Font HEADER_FONT = new Font("Segoe UI", Font.BOLD, 18);
 
-    public Admin_TAWorkLoadControlUI(User user) {
-        this.currentUser = user;
-        this.setLayout(new BorderLayout(0, 20));
-        this.setBackground(BG_LIGHT);
-        this.setBorder(new EmptyBorder(30, 40, 30, 40));
-
-        loadLimitFromFile();
-        loadHourLimitFromFile();
+    public Admin_TAWorkLoadControlUI(Admin_TAWorkLoadControl controller) {
+        this.controller = controller;
+        setLayout(new BorderLayout(0, 20));
+        setBackground(BG_LIGHT);
+        setBorder(new EmptyBorder(30, 40, 30, 40));
         initializeUI();
-        
-        // 2.1: Load real data from CSV instead of hardcoded mock data
-        loadTADataFromFile();
     }
 
-    private void loadLimitFromFile() {
-        if (!configFile.exists()) return;
-        try (BufferedReader br = new BufferedReader(new FileReader(configFile))) {
-            String line = br.readLine();
-            if (line != null) currentLimit = Integer.parseInt(line.trim());
-        } catch (Exception e) { currentLimit = 3; }
-    }
-
-    private void saveLimitToFile() {
-        try (PrintWriter pw = new PrintWriter(new FileWriter(configFile))) {
-            pw.println(currentLimit);
-        } catch (IOException e) {
-            JOptionPane.showMessageDialog(this, "Save failed: " + e.getMessage());
-        }
-    }
-
-    private void loadHourLimitFromFile() {
-        if (!hourConfigFile.exists()) return;
-        try (BufferedReader br = new BufferedReader(new FileReader(hourConfigFile))) {
-            String line = br.readLine();
-            if (line != null) warningHourLimit = Integer.parseInt(line.trim());
-        } catch (Exception e) { warningHourLimit = 5; }
-    }
-
-    private void saveHourLimitToFile() {
-        try (PrintWriter pw = new PrintWriter(new FileWriter(hourConfigFile))) {
-            pw.println(warningHourLimit);
-        } catch (IOException e) {
-            JOptionPane.showMessageDialog(this, "Save failed: " + e.getMessage());
-        }
-    }
-
-    // New for 2.1: Load TA workload data from CSV
-    private void loadTADataFromFile() {
-        tableModel.setRowCount(0); // Clear current table
-        if (!taDataFile.exists()) {
-            saveInitialTAData(); // Create a default file if it doesn't exist
-            return;
-        }
-        try (BufferedReader br = new BufferedReader(new FileReader(taDataFile))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                if (line.trim().isEmpty()) continue;
-                String[] parts = line.split(",");
-                if (parts.length >= 5) {
-                    tableModel.addRow(parts);
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    // New for 2.1: Create initial data file for testing
-    private void saveInitialTAData() {
-        try (PrintWriter pw = new PrintWriter(new FileWriter(taDataFile))) {
-            pw.println("ID-901,Alice Johnson,3,5,alice.j@uni.edu");
-            pw.println("ID-722,Bob Smith,2,2,bob@uni.edu");
-            pw.println("ID-553,Charlie Brown,1,4,charlie@uni.edu");
-            pw.println("ID-104,David Wilson,2,1,d.wilson@uni.edu");
-            loadTADataFromFile(); // Reload after saving
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    // Initialize all UI components
     private void initializeUI() {
-        // Header panel with title
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setOpaque(false);
-
         JLabel titleLabel = new JLabel("TA Workload Dashboard");
         titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 28));
         titleLabel.setForeground(TEXT_DARK);
         headerPanel.add(titleLabel, BorderLayout.WEST);
-
         JLabel subTitle = new JLabel("Monitor and manage assistant application limits");
         subTitle.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         subTitle.setForeground(Color.GRAY);
         headerPanel.add(subTitle, BorderLayout.SOUTH);
-
         add(headerPanel, BorderLayout.NORTH);
 
-        // Table setup
-        String[] columnNames = {"ID", "Name", "Enrolled Courses", "Total Work Hours", "Contact Email"};
-        tableModel = new DefaultTableModel(columnNames, 0) {
+        String[] cols = {"ID", "Name", "Enrolled Courses", "Total Work Hours", "Contact Email"};
+        tableModel = new DefaultTableModel(cols, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
         taTable = new JTable(tableModel);
-
-        // Table styling
         taTable.setRowHeight(45);
         taTable.setFont(MAIN_FONT);
         taTable.setShowVerticalLines(false);
-        taTable.setGridColor(new Color(230, 230, 230));
-        taTable.setSelectionBackground(new Color(235, 245, 251));
+        taTable.setGridColor(new Color(230,230,230));
+        taTable.setSelectionBackground(new Color(235,245,251));
         taTable.setSelectionForeground(TEXT_DARK);
-        taTable.setIntercellSpacing(new Dimension(0, 0));
+        taTable.setIntercellSpacing(new Dimension(0,0));
 
-        // Table header styling
         JTableHeader header = taTable.getTableHeader();
         header.setFont(HEADER_FONT);
         header.setBackground(Color.WHITE);
         header.setForeground(TEXT_DARK);
-        header.setPreferredSize(new Dimension(0, 50));
+        header.setPreferredSize(new Dimension(0,50));
         ((DefaultTableCellRenderer)header.getDefaultRenderer()).setHorizontalAlignment(JLabel.LEFT);
 
         setupTableLogic();
+        JScrollPane sp = new JScrollPane(taTable);
+        sp.setBorder(BorderFactory.createEmptyBorder());
+        sp.getViewport().setBackground(Color.WHITE);
+        add(sp, BorderLayout.CENTER);
 
-        // Scroll pane for table
-        JScrollPane scrollPane = new JScrollPane(taTable);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.getViewport().setBackground(Color.WHITE);
-        add(scrollPane, BorderLayout.CENTER);
-
-        // Bottom control panel
         JPanel bottomPanel = new JPanel(new BorderLayout());
         bottomPanel.setOpaque(false);
-        bottomPanel.setPreferredSize(new Dimension(0, 80));
+        bottomPanel.setPreferredSize(new Dimension(0,120));
 
-        // Limit control section
-        JPanel limitPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 20));
+        JPanel limitPanel = new JPanel();
+        limitPanel.setLayout(new BoxLayout(limitPanel, BoxLayout.Y_AXIS));
         limitPanel.setOpaque(false);
+        limitPanel.setBorder(new EmptyBorder(0, 0, 10, 0));
 
-        currentLimitLabel = new JLabel("Status: Max Courses per TA: " + currentLimit);
+        JPanel courseLimitRow = new JPanel(new FlowLayout(FlowLayout.LEFT,10,0));
+        courseLimitRow.setOpaque(false);
+        currentLimitLabel = new JLabel();
         currentLimitLabel.setFont(MAIN_FONT);
         JTextField limitField = new JTextField(4);
-        limitField.setPreferredSize(new Dimension(50, 35));
+        limitField.setPreferredSize(new Dimension(50,35));
         limitField.setHorizontalAlignment(JTextField.CENTER);
-        JButton setBtn = createStyledButton("Set Course Limit", PRIMARY_BLUE, true);
+        JButton setBtn = createStyledButton("Set Course Limit", PRIMARY_BLUE);
         setBtn.addActionListener(e -> {
-            updateLimit(limitField.getText());
+            controller.updateLimit(limitField.getText());
             limitField.setText("");
         });
+        courseLimitRow.add(currentLimitLabel);
+        courseLimitRow.add(limitField);
+        courseLimitRow.add(setBtn);
 
-        hourLimitLabel = new JLabel("Warning Hours: " + warningHourLimit);
+        JPanel hourLimitRow = new JPanel(new FlowLayout(FlowLayout.LEFT,10,10));
+        hourLimitRow.setOpaque(false);
+        hourLimitLabel = new JLabel();
         hourLimitLabel.setFont(MAIN_FONT);
         JTextField hourField = new JTextField(4);
-        hourField.setPreferredSize(new Dimension(50, 35));
+        hourField.setPreferredSize(new Dimension(50,35));
         hourField.setHorizontalAlignment(JTextField.CENTER);
-        JButton setHourBtn = createStyledButton("Set Hour Warning", PRIMARY_BLUE, true);
+        JButton setHourBtn = createStyledButton("Set Hour Warning", PRIMARY_BLUE);
         setHourBtn.addActionListener(e -> {
-            updateHourLimit(hourField.getText());
+            controller.updateHourLimit(hourField.getText());
             hourField.setText("");
         });
+        hourLimitRow.add(hourLimitLabel);
+        hourLimitRow.add(hourField);
+        hourLimitRow.add(setHourBtn);
 
-        limitPanel.add(currentLimitLabel);
-        limitPanel.add(limitField);
-        limitPanel.add(setBtn);
-        limitPanel.add(hourLimitLabel);
-        limitPanel.add(hourField);
-        limitPanel.add(setHourBtn);
+        limitPanel.add(courseLimitRow);
+        limitPanel.add(hourLimitRow);
 
-        // Export button section
-        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 20));
+        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT,10,0));
         actionPanel.setOpaque(false);
-        JButton exportBtn = createStyledButton("Export Excel (CSV)", new Color(46, 204, 113), true);
-        exportBtn.addActionListener(e -> exportDataToCSV());
+
+        JButton refreshBtn = createStyledButton("Refresh", PRIMARY_BLUE);
+        refreshBtn.addActionListener(e -> {
+            controller.loadTADataFromFile();
+            controller.loadLimitFromFile();
+            controller.loadHourLimitFromFile();
+            refreshLimitLabels();
+            taTable.repaint();
+            JOptionPane.showMessageDialog(this, "TA data refreshed successfully!");
+        });
+        actionPanel.add(refreshBtn);
+
+        JButton exportBtn = createStyledButton("Export CSV", SUCCESS_GREEN);
+        exportBtn.addActionListener(e -> controller.exportDataToCSV());
         actionPanel.add(exportBtn);
 
         bottomPanel.add(limitPanel, BorderLayout.WEST);
         bottomPanel.add(actionPanel, BorderLayout.EAST);
-
         add(bottomPanel, BorderLayout.SOUTH);
     }
 
-    private JButton createStyledButton(String text, Color bg, boolean isPrimary) {
-        JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btn.setPreferredSize(new Dimension(160, 40));
-        btn.setBackground(bg);
-        btn.setForeground(Color.WHITE);
-        btn.setFocusPainted(false);
-        btn.setBorderPainted(false);
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        return btn;
+    public void refreshLimitLabels() {
+        currentLimitLabel.setText("Status: Max Courses per TA: " + controller.currentLimit);
+        hourLimitLabel.setText("Warning Hours: " + controller.warningHourLimit);
     }
 
     private void setupTableLogic() {
@@ -237,99 +153,36 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
             @Override
             public Component getTableCellRendererComponent(JTable t, Object v, boolean isS, boolean hasF, int r, int c) {
                 JLabel label = (JLabel) super.getTableCellRendererComponent(t, v, isS, hasF, r, c);
-                label.setBorder(new EmptyBorder(0, 10, 0, 0));
-
-                int modelRow = t.convertRowIndexToModel(r);
+                label.setBorder(new EmptyBorder(0,10,0,0));
+                int mr = t.convertRowIndexToModel(r);
                 try {
-                    int hours = Integer.parseInt(t.getModel().getValueAt(modelRow, 3).toString());
-                    if (hours > warningHourLimit) {
+                    int h = Integer.parseInt(t.getModel().getValueAt(mr,3).toString());
+                    if (h > controller.warningHourLimit) {
                         label.setForeground(DANGER_RED);
-                        label.setFont(new Font("Segoe UI", Font.BOLD, 15));
+                        label.setFont(new Font("Segoe UI", Font.BOLD,15));
                     } else {
                         label.setForeground(TEXT_DARK);
                         label.setFont(MAIN_FONT);
                     }
-                } catch (Exception e) {}
-
-                if (!isS) label.setBackground(Color.WHITE);
+                } catch (Exception ignored) {}
+                if (!isS) setBackground(Color.WHITE);
                 return label;
             }
         });
     }
 
-    private void updateLimit(String input) {
-        try {
-            currentLimit = Integer.parseInt(input.trim());
-            currentLimitLabel.setText("Status: Max Courses per TA: " + currentLimit);
-            saveLimitToFile();
-            taTable.repaint();
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Please enter a valid number.");
-        }
+    private JButton createStyledButton(String text, Color bg) {
+        JButton b = new JButton(text);
+        b.setFont(new Font("Segoe UI", Font.BOLD,14));
+        b.setPreferredSize(new Dimension(160,40));
+        b.setBackground(bg);
+        b.setForeground(Color.WHITE);
+        b.setFocusPainted(false);
+        b.setBorderPainted(false);
+        b.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        return b;
     }
 
-    private void updateHourLimit(String input) {
-        try {
-            warningHourLimit = Integer.parseInt(input.trim());
-            hourLimitLabel.setText("Warning Hours: " + warningHourLimit);
-            saveHourLimitToFile();
-            taTable.repaint();
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Please enter a valid number.");
-        }
-    }
-
-    private void exportDataToCSV() {
-        JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setDialogTitle("Export to CSV");
-        fileChooser.setSelectedFile(new File("TA_Workload_" + System.currentTimeMillis() + ".csv"));
-        int userSelection = fileChooser.showSaveDialog(this);
-
-        if (userSelection != JFileChooser.APPROVE_OPTION) {
-            JOptionPane.showMessageDialog(this, "Export cancelled.");
-            return;
-        }
-
-        File fileToSave = fileChooser.getSelectedFile();
-        if (!fileToSave.getName().endsWith(".csv")) {
-            fileToSave = new File(fileToSave.getParentFile(), fileToSave.getName() + ".csv");
-        }
-
-        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileToSave), "UTF-8"))) {
-            DefaultTableModel model = (DefaultTableModel) taTable.getModel();
-            int columnCount = model.getColumnCount();
-
-            for (int i = 0; i < columnCount; i++) {
-                writer.write(escapeCsvValue(model.getColumnName(i)));
-                if (i < columnCount - 1) writer.write(",");
-            }
-            writer.newLine();
-
-            int rowCount = taTable.getRowCount();
-            for (int i = 0; i < rowCount; i++) {
-                int modelRow = taTable.convertRowIndexToModel(i);
-                for (int j = 0; j < columnCount; j++) {
-                    Object val = model.getValueAt(modelRow, j);
-                    String cell = val == null ? "" : val.toString();
-                    writer.write(escapeCsvValue(cell));
-                    if (j < columnCount - 1) writer.write(",");
-                }
-                writer.newLine();
-            }
-
-            JOptionPane.showMessageDialog(this, "Export successful!\nSaved to: " + fileToSave.getAbsolutePath());
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Export failed: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    private String escapeCsvValue(String value) {
-        if (value.startsWith("=") || value.startsWith("+") || value.startsWith("-") || value.startsWith("@")) {
-            value = "'" + value;
-        }
-        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
-            value = "\"" + value.replace("\"", "\"\"") + "\"";
-        }
-        return value;
-    }
+    public JTable getTaTable() { return taTable; }
+    public DefaultTableModel getTableModel() { return tableModel; }
 }
