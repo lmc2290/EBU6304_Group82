@@ -4,6 +4,8 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.*;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -15,6 +17,7 @@ public class Admin_CourseApplicationControlUI extends JPanel {
 
     private final Color SUCCESS_GREEN = new Color(46, 204, 113);
     private final Color DANGER_RED = new Color(231, 76, 60);
+    private final Color RESET_BLUE = new Color(52, 152, 219);
     private final Color BG_LIGHT = new Color(245, 247, 250);
     private final Color PRIMARY_BLUE = new Color(41, 128, 185);
 
@@ -29,32 +32,26 @@ public class Admin_CourseApplicationControlUI extends JPanel {
     }
 
     private void initUI() {
-        // Title label
         JLabel title = new JLabel("Module Posting Approval");
         title.setFont(new Font("Segoe UI", Font.BOLD, 28));
         add(title, BorderLayout.NORTH);
 
-        // Table model with non-editable cells except status column
         String[] columnNames = {"ID", "Module Name", "Organiser", "Content", "Status & Actions"};
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int r, int c) {
-                if (c != 4) return false;
-                String status = String.valueOf(getValueAt(r, 4));
-                return status.contains("Pending");
+                return c == 4;
             }
         };
 
         requestTable = new JTable(tableModel);
         setupTableBehavior();
 
-        // Scroll pane for table
         JScrollPane sp = new JScrollPane(requestTable);
         sp.setBorder(BorderFactory.createEmptyBorder());
         sp.getViewport().setBackground(Color.WHITE);
         add(sp, BorderLayout.CENTER);
 
-        // Bottom action panel
         JPanel bottom = new JPanel(new BorderLayout());
         bottom.setOpaque(false);
         bottom.setPreferredSize(new Dimension(0, 80));
@@ -62,14 +59,12 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 20));
         actionPanel.setOpaque(false);
 
-        // Refresh button with notification
         JButton refreshBtn = createBtn("Refresh", PRIMARY_BLUE);
         refreshBtn.addActionListener(e -> {
             controller.loadData();
             JOptionPane.showMessageDialog(this, "Course data refreshed successfully!");
         });
 
-        // Export CSV button
         JButton exportBtn = createBtn("Export CSV", SUCCESS_GREEN);
         exportBtn.addActionListener(e -> controller.exportData());
 
@@ -79,16 +74,26 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         add(bottom, BorderLayout.SOUTH);
     }
 
-    // Table appearance and sorting settings
     private void setupTableBehavior() {
         requestTable.setRowHeight(60);
         requestTable.setShowVerticalLines(false);
         requestTable.setIntercellSpacing(new Dimension(0, 0));
 
+        // Click to edit directly
+        requestTable.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int col = requestTable.columnAtPoint(e.getPoint());
+                int row = requestTable.rowAtPoint(e.getPoint());
+                if (col == 4 && !requestTable.isEditing()) {
+                    requestTable.editCellAt(row, col);
+                }
+            }
+        });
+
         TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
         requestTable.setRowSorter(sorter);
 
-        // Sort to show Pending items first
         sorter.setComparator(4, new Comparator<String>() {
             @Override
             public int compare(String s1, String s2) {
@@ -104,12 +109,10 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         sortKeys.add(new RowSorter.SortKey(4, SortOrder.ASCENDING));
         sorter.setSortKeys(sortKeys);
 
-        // Custom render and editor for status column
         requestTable.getColumnModel().getColumn(4).setCellRenderer(new StatusRenderer());
         requestTable.getColumnModel().getColumn(4).setCellEditor(new StatusEditor());
     }
 
-    // Create styled navigation button
     private JButton createBtn(String text, Color bg) {
         JButton btn = new JButton(text);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
@@ -122,7 +125,6 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         return btn;
     }
 
-    // Create small approve/reject buttons
     private JButton createSmallBtn(String text, Color bg) {
         JButton b = new JButton(text);
         b.setBackground(bg);
@@ -132,20 +134,24 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         return b;
     }
 
-    // Custom renderer for status column
+    // Display correct buttons based on status
     class StatusRenderer extends JPanel implements TableCellRenderer {
-        private final JLabel statusLabel = new JLabel("", SwingConstants.CENTER);
-        private final JPanel btnPanel;
+        private final JPanel pendingPanel;
+        private final JPanel resetPanel;
 
         public StatusRenderer() {
             setLayout(new BorderLayout());
             setBorder(new EmptyBorder(12, 10, 12, 10));
             setOpaque(true);
-            btnPanel = new JPanel(new GridLayout(1, 2, 8, 0));
-            btnPanel.setOpaque(false);
-            btnPanel.add(createSmallBtn("Approve", SUCCESS_GREEN));
-            btnPanel.add(createSmallBtn("Reject", DANGER_RED));
-            statusLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+
+            pendingPanel = new JPanel(new GridLayout(1, 2, 8, 0));
+            pendingPanel.setOpaque(false);
+            pendingPanel.add(createSmallBtn("Approve", SUCCESS_GREEN));
+            pendingPanel.add(createSmallBtn("Reject", DANGER_RED));
+
+            resetPanel = new JPanel(new GridLayout(1, 1, 0, 0));
+            resetPanel.setOpaque(false);
+            resetPanel.add(createSmallBtn("Reset", RESET_BLUE));
         }
 
         @Override
@@ -153,32 +159,35 @@ public class Admin_CourseApplicationControlUI extends JPanel {
             String status = String.valueOf(v);
             setBackground(isSel ? t.getSelectionBackground() : Color.WHITE);
             removeAll();
+
             if (status.contains("Pending")) {
-                add(btnPanel, BorderLayout.CENTER);
+                add(pendingPanel, BorderLayout.CENTER);
             } else {
-                statusLabel.setText(status);
-                statusLabel.setForeground(status.startsWith("Approved") ? SUCCESS_GREEN : DANGER_RED);
-                add(statusLabel, BorderLayout.CENTER);
+                add(resetPanel, BorderLayout.CENTER);
             }
             return this;
         }
     }
 
-    // Custom editor for status operations
+    // Clickable editor for approval actions
     class StatusEditor extends DefaultCellEditor {
         private final JPanel panel;
         private String currentStatus;
+        private final JButton btnApprove;
+        private final JButton btnReject;
+        private final JButton btnReset;
 
         public StatusEditor() {
             super(new JCheckBox());
-            panel = new JPanel(new GridLayout(1, 2, 8, 0));
+            panel = new JPanel();
             panel.setBorder(new EmptyBorder(12, 10, 12, 10));
+            panel.setBackground(Color.WHITE);
 
-            JButton btnApp = createSmallBtn("Approve", SUCCESS_GREEN);
-            JButton btnRej = createSmallBtn("Reject", DANGER_RED);
+            btnApprove = createSmallBtn("Approve", SUCCESS_GREEN);
+            btnReject = createSmallBtn("Reject", DANGER_RED);
+            btnReset = createSmallBtn("Reset", RESET_BLUE);
 
-            // Approve action
-            btnApp.addActionListener(e -> {
+            btnApprove.addActionListener(e -> {
                 currentStatus = "Approved";
                 int row = requestTable.getEditingRow();
                 String id = String.valueOf(requestTable.getValueAt(row, 0));
@@ -186,8 +195,7 @@ public class Admin_CourseApplicationControlUI extends JPanel {
                 fireEditingStopped();
             });
 
-            // Reject action with reason input
-            btnRej.addActionListener(e -> {
+            btnReject.addActionListener(e -> {
                 String reason = JOptionPane.showInputDialog(null,
                         "Rejection Reason is REQUIRED:",
                         "Mandatory Feedback",
@@ -207,14 +215,30 @@ public class Admin_CourseApplicationControlUI extends JPanel {
                 }
             });
 
-            panel.add(btnApp);
-            panel.add(btnRej);
+            btnReset.addActionListener(e -> {
+                currentStatus = "Pending Review";
+                int row = requestTable.getEditingRow();
+                String id = String.valueOf(requestTable.getValueAt(row, 0));
+                controller.resetModule(id);
+                fireEditingStopped();
+            });
         }
 
         @Override
         public Component getTableCellEditorComponent(JTable t, Object v, boolean isSel, int r, int c) {
-            panel.setBackground(t.getSelectionBackground());
             currentStatus = String.valueOf(v);
+            panel.removeAll();
+
+            if (currentStatus.contains("Pending")) {
+                panel.setLayout(new GridLayout(1, 2, 8, 0));
+                panel.add(btnApprove);
+                panel.add(btnReject);
+            } else {
+                panel.setLayout(new GridLayout(1, 1, 0, 0));
+                panel.add(btnReset);
+            }
+
+            panel.setBackground(isSel ? t.getSelectionBackground() : Color.WHITE);
             return panel;
         }
 
