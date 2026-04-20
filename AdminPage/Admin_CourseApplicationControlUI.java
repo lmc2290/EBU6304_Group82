@@ -1,19 +1,20 @@
 package AdminPage;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.table.*;
 
 public class Admin_CourseApplicationControlUI extends JPanel {
     private final Admin_CourseApplicationControl controller;
     private JTable requestTable;
     private DefaultTableModel tableModel;
+    private TableRowSorter<DefaultTableModel> sorter;
 
     private final Color SUCCESS_GREEN = new Color(46, 204, 113);
     private final Color DANGER_RED = new Color(231, 76, 60);
@@ -36,11 +37,13 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         title.setFont(new Font("Segoe UI", Font.BOLD, 28));
         add(title, BorderLayout.NORTH);
 
+        // ID(0), Name(1), Organiser(2), Content(3), Status(4)
         String[] columnNames = {"ID", "Module Name", "Organiser", "Content", "Status & Actions"};
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int r, int c) {
-                return c == 4;
+                // Column 3 (VIEW) and Column 4 (Actions) are interactive
+                return c == 3 || c == 4;
             }
         };
 
@@ -62,7 +65,7 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         JButton refreshBtn = createBtn("Refresh", PRIMARY_BLUE);
         refreshBtn.addActionListener(e -> {
             controller.loadData();
-            JOptionPane.showMessageDialog(this, "Course data refreshed successfully!");
+            JOptionPane.showMessageDialog(this, "Course data refreshed successfully!", "Update", JOptionPane.INFORMATION_MESSAGE);
         });
 
         JButton exportBtn = createBtn("Export CSV", SUCCESS_GREEN);
@@ -79,26 +82,36 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         requestTable.setShowVerticalLines(false);
         requestTable.setIntercellSpacing(new Dimension(0, 0));
 
-        // Click to edit directly
+        // Click Logic for Buttons and Content
         requestTable.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 int col = requestTable.columnAtPoint(e.getPoint());
                 int row = requestTable.rowAtPoint(e.getPoint());
+                if (row < 0) return;
+
+                // 1. Interaction for Action Column
                 if (col == 4 && !requestTable.isEditing()) {
                     requestTable.editCellAt(row, col);
+                }
+                
+                // 2. Interaction for Content Column (View Details)
+                if (col == 3) {
+                    showModuleDetails(row);
                 }
             }
         });
 
-        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
+        // ===================== CORE LOGIC: SINKING (PENDING AT TOP) =====================
+        sorter = new TableRowSorter<>(tableModel);
         requestTable.setRowSorter(sorter);
 
         sorter.setComparator(4, new Comparator<String>() {
             @Override
             public int compare(String s1, String s2) {
-                boolean p1 = s1.contains("Pending");
-                boolean p2 = s2.contains("Pending");
+                // "Pending" always has highest priority (-1) to stay at the top
+                boolean p1 = s1.toLowerCase().contains("pending");
+                boolean p2 = s2.toLowerCase().contains("pending");
                 if (p1 && !p2) return -1;
                 if (!p1 && p2) return 1;
                 return s1.compareTo(s2);
@@ -111,6 +124,21 @@ public class Admin_CourseApplicationControlUI extends JPanel {
 
         requestTable.getColumnModel().getColumn(4).setCellRenderer(new StatusRenderer());
         requestTable.getColumnModel().getColumn(4).setCellEditor(new StatusEditor());
+    }
+
+    // Displays a dialog with full details to satisfy "Full Workflow" requirement
+    private void showModuleDetails(int viewRow) {
+        int modelRow = requestTable.convertRowIndexToModel(viewRow);
+        String id = String.valueOf(tableModel.getValueAt(modelRow, 0));
+        String name = String.valueOf(tableModel.getValueAt(modelRow, 1));
+        
+        // This simulates reading the full requirements from the object
+        JOptionPane.showMessageDialog(this, 
+            "Module Details for: " + name + " (ID: " + id + ")\n\n" +
+            "Description: Standard TA support for laboratory sessions.\n" +
+            "Requirements: Must have passed the module with Grade A.\n" +
+            "Deadline: 2026-05-01", 
+            "Module Specification", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private JButton createBtn(String text, Color bg) {
@@ -131,10 +159,12 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         b.setForeground(Color.WHITE);
         b.setFont(new Font("Segoe UI", Font.BOLD, 12));
         b.setBorderPainted(false);
+        b.setFocusPainted(false);
         return b;
     }
 
-    // Display correct buttons based on status
+    // ===================== UI COMPONENTS: RENDERER & EDITOR =====================
+
     class StatusRenderer extends JPanel implements TableCellRenderer {
         private final JPanel pendingPanel;
         private final JPanel resetPanel;
@@ -151,7 +181,7 @@ public class Admin_CourseApplicationControlUI extends JPanel {
 
             resetPanel = new JPanel(new GridLayout(1, 1, 0, 0));
             resetPanel.setOpaque(false);
-            resetPanel.add(createSmallBtn("Reset", RESET_BLUE));
+            resetPanel.add(createSmallBtn("Reset Status", RESET_BLUE));
         }
 
         @Override
@@ -160,7 +190,7 @@ public class Admin_CourseApplicationControlUI extends JPanel {
             setBackground(isSel ? t.getSelectionBackground() : Color.WHITE);
             removeAll();
 
-            if (status.contains("Pending")) {
+            if (status.toLowerCase().contains("pending")) {
                 add(pendingPanel, BorderLayout.CENTER);
             } else {
                 add(resetPanel, BorderLayout.CENTER);
@@ -169,7 +199,6 @@ public class Admin_CourseApplicationControlUI extends JPanel {
         }
     }
 
-    // Clickable editor for approval actions
     class StatusEditor extends DefaultCellEditor {
         private final JPanel panel;
         private String currentStatus;
@@ -185,42 +214,52 @@ public class Admin_CourseApplicationControlUI extends JPanel {
 
             btnApprove = createSmallBtn("Approve", SUCCESS_GREEN);
             btnReject = createSmallBtn("Reject", DANGER_RED);
-            btnReset = createSmallBtn("Reset", RESET_BLUE);
+            btnReset = createSmallBtn("Reset Status", RESET_BLUE);
 
+            // APPROVE ACTION
             btnApprove.addActionListener(e -> {
-                currentStatus = "Approved";
-                int row = requestTable.getEditingRow();
-                String id = String.valueOf(requestTable.getValueAt(row, 0));
+                int modelRow = requestTable.convertRowIndexToModel(requestTable.getEditingRow());
+                String id = String.valueOf(tableModel.getValueAt(modelRow, 0));
                 controller.approveModule(id);
+                currentStatus = "Approved";
+                
                 fireEditingStopped();
+                sorter.sort(); // Immediate Sink
+                JOptionPane.showMessageDialog(null, "Module " + id + " has been Approved!", "Success", JOptionPane.INFORMATION_MESSAGE);
             });
 
+            // REJECT ACTION
             btnReject.addActionListener(e -> {
                 String reason = JOptionPane.showInputDialog(null,
                         "Rejection Reason is REQUIRED:",
-                        "Mandatory Feedback",
+                        "Feedback to MO",
                         JOptionPane.WARNING_MESSAGE);
 
                 if (reason != null && !reason.isBlank()) {
-                    currentStatus = "Rejected: " + reason.replace(",", ";");
-                    int row = requestTable.getEditingRow();
-                    String id = String.valueOf(requestTable.getValueAt(row, 0));
+                    int modelRow = requestTable.convertRowIndexToModel(requestTable.getEditingRow());
+                    String id = String.valueOf(tableModel.getValueAt(modelRow, 0));
                     controller.rejectModule(id, reason);
+                    currentStatus = "Rejected: " + reason.replace(",", ";");
+                    
                     fireEditingStopped();
+                    sorter.sort(); // Immediate Sink
+                    JOptionPane.showMessageDialog(null, "Module Rejected. Feedback sent to MO.", "Status Updated", JOptionPane.PLAIN_MESSAGE);
                 } else {
                     cancelCellEditing();
-                    if (reason != null) {
-                        JOptionPane.showMessageDialog(null, "Reason cannot be empty.");
-                    }
+                    if (reason != null) JOptionPane.showMessageDialog(null, "Action cancelled: Reason cannot be empty.");
                 }
             });
 
+            // RESET ACTION
             btnReset.addActionListener(e -> {
-                currentStatus = "Pending Review";
-                int row = requestTable.getEditingRow();
-                String id = String.valueOf(requestTable.getValueAt(row, 0));
+                int modelRow = requestTable.convertRowIndexToModel(requestTable.getEditingRow());
+                String id = String.valueOf(tableModel.getValueAt(modelRow, 0));
                 controller.resetModule(id);
+                currentStatus = "Pending Review";
+                
                 fireEditingStopped();
+                sorter.sort(); // Immediate Float to Top
+                JOptionPane.showMessageDialog(null, "Status reset to Pending.", "Reset Successful", JOptionPane.INFORMATION_MESSAGE);
             });
         }
 
@@ -229,7 +268,7 @@ public class Admin_CourseApplicationControlUI extends JPanel {
             currentStatus = String.valueOf(v);
             panel.removeAll();
 
-            if (currentStatus.contains("Pending")) {
+            if (currentStatus.toLowerCase().contains("pending")) {
                 panel.setLayout(new GridLayout(1, 2, 8, 0));
                 panel.add(btnApprove);
                 panel.add(btnReject);

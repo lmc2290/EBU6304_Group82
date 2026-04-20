@@ -1,11 +1,11 @@
 package AdminPage;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.table.*;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.table.*;
 
 public class Admin_TAWorkLoadControlUI extends JPanel {
     private final Admin_TAWorkLoadControl controller;
@@ -141,10 +141,24 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         currentLimitLabel.setText("Status: Max Courses per TA: " + controller.currentLimit);
         hourLimitLabel.setText("Warning Hours: " + controller.warningHourLimit);
     }
-
-    private void setupTableLogic() {
+private void setupTableLogic() {
         TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
         taTable.setRowSorter(sorter);
+
+        sorter.setComparator(3, new java.util.Comparator<String>() {
+            @Override
+            public int compare(String s1, String s2) {
+                try {
+                    
+                    return Integer.compare(Integer.parseInt(s1.trim()), Integer.parseInt(s2.trim()));
+                } catch (NumberFormatException e) {
+                    
+                    return s1.compareTo(s2);
+                }
+            }
+        });
+
+  
         List<RowSorter.SortKey> keys = new ArrayList<>();
         keys.add(new RowSorter.SortKey(3, SortOrder.DESCENDING));
         sorter.setSortKeys(keys);
