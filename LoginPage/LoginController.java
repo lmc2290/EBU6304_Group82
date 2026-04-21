@@ -1,6 +1,9 @@
 package LoginPage;
-
 import javax.swing.*;
+import TAUI.TADashboardUI;
+import AdminPage.AdminDashboardUI;
+import TAUI.TAController;
+
 
 /**
  * Control Class
@@ -10,7 +13,6 @@ public class LoginController {
 
     private LoginUI loginUI;
 
-    // Link the controller to the boundary
     public void setLoginUI(LoginUI loginUI) {
         this.loginUI = loginUI;
     }
@@ -19,7 +21,6 @@ public class LoginController {
      * Processes the login attempt.
      */
     public void authenticate(String idStr, String password) {
-        // Form null/empty check
         if (idStr.isEmpty() || password.isEmpty()) {
             loginUI.showError("Please enter both ID and Password!");
             return;
@@ -29,7 +30,6 @@ public class LoginController {
             int idNum = Integer.parseInt(idStr);
             User authenticatedUser;
 
-            // Identity verification logic & Entity creation -- detail can be changed
             if (idNum == 0) {
                 authenticatedUser = new User(idStr, "Admin");
                 loginUI.showMessage("Admin identity detected. Routing to Admin Dashboard...");
@@ -38,6 +38,13 @@ public class LoginController {
             } else if (idNum >= 1 && idNum <= 100) {
                 // 给 MO 分配 moduleName，避免 applicant list 为空
                 String moduleName = assignModuleToMO(idNum);
+                String moduleName;
+                if (idNum <= 50) {
+                    moduleName = "CS101";
+                } else {
+                    moduleName = "CS202";
+                }
+
                 authenticatedUser = new User(idStr, "MO", moduleName);
                 loginUI.showMessage("MO identity detected. Routing to MO Dashboard...");
                 routeToDashboard(authenticatedUser);
@@ -68,7 +75,6 @@ public class LoginController {
      * Routes the user to the appropriate dashboard based on their role.
      */
     private void routeToDashboard(User user) {
-        // Hide the login screen
         loginUI.setVisible(false);
 
         // Instantiate the specific dashboard based on the user's role
@@ -81,6 +87,7 @@ public class LoginController {
             System.out.println("User module: " + user.getModuleName());
         }
     }
+        DashBoardUI dashboard = null;
 
     /**
      * Creates the appropriate dashboard based on user role
@@ -96,6 +103,18 @@ public class LoginController {
             default:
                 loginUI.showError("Unknown role detected.");
                 return null;
+                TAController taController = new TAController();
+                dashboard = new TADashboardUI(user, taController);
+                break;
+            default:
+                loginUI.showError("Unknown role detected.");
+                return;
+        }
+
+        if (dashboard != null) {
+            dashboard.setVisible(true);
+            System.out.println("Routing complete for: " + user.getRole());
+            System.out.println("User module: " + user.getModuleName());
         }
     }
 }

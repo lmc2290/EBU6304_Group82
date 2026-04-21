@@ -1,4 +1,4 @@
-package LoginPage;
+package AdminPage;
 
 import java.io.*;
 import java.util.HashMap;
@@ -22,9 +22,11 @@ public class Admin_CheckApplicationLimit {
                 line = line.trim();
                 if (line.isEmpty()) continue;
                 String[] parts = line.split(",");
-                String courseId = parts[0];
-                int limit = Integer.parseInt(parts[1]);
-                map.put(courseId, limit);
+                if (parts.length >= 2) {
+                    String courseId = parts[0];
+                    int limit = Integer.parseInt(parts[1]);
+                    map.put(courseId, limit);
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -38,6 +40,8 @@ public class Admin_CheckApplicationLimit {
         mockData.put("Bob Smith", 2);
         mockData.put("Charlie Brown", 1);
         mockData.put("David Wilson", 2);
+        mockData.put("Emma Davis", 3);
+        mockData.put("Frank Miller", 2);
         return mockData.getOrDefault(taName, 0);
     }
 
@@ -47,5 +51,18 @@ public class Admin_CheckApplicationLimit {
         int currentCourses = getEnrolledCourses(taName);
 
         return currentCourses < maxAllowed;
+    }
+
+    public static void saveCourseLimit(String courseId, int limit) {
+        Map<String, Integer> limits = loadCourseLimits();
+        limits.put(courseId, limit);
+
+        try (PrintWriter pw = new PrintWriter(new FileWriter("course_limits.txt"))) {
+            for (Map.Entry<String, Integer> entry : limits.entrySet()) {
+                pw.println(entry.getKey() + "," + entry.getValue());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
