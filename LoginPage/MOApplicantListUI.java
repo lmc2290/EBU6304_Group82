@@ -1,215 +1,258 @@
 package LoginPage;
 
 import javax.swing.*;
-import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.RowFilter;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellEditor;
+import javax.swing.table.TableCellRenderer;
+import javax.swing.table.TableRowSorter;
 import java.awt.*;
+import java.util.ArrayList;
 import java.util.List;
 
-public class MOApplicantListUI extends JFrame {
-    private JComboBox<String> moduleComboBox;
-    private JComboBox<String> englishLevelComboBox;
-    private JTextField courseFilterField;
+public class MOApplicantListUI extends JPanel {
+    private final User currentUser;
     private JTable applicantTable;
     private DefaultTableModel tableModel;
-    private String selectedModuleId;
-    
+    private JComboBox<String> courseFilterBox;
+    private JComboBox<String> englishFilterBox;
+    private JTextField nameFilterField;
+    private TableRowSorter<DefaultTableModel> sorter;
+
     public MOApplicantListUI(User user) {
-        setTitle("Module-Specific Applicant List");
-        setSize(800, 600);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setLocationRelativeTo(null);
-        
-        JPanel mainPanel = new JPanel();
-        mainPanel.setLayout(new BorderLayout());
-        mainPanel.setBackground(new Color(247, 247, 247));
-        
-        // Header
-        JLabel headerLabel = new JLabel("Applicant List", SwingConstants.CENTER);
-        headerLabel.setFont(new Font("Arial", Font.BOLD, 20));
-        headerLabel.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 0));
-        mainPanel.add(headerLabel, BorderLayout.NORTH);
-        
-        // Filter panel
-        JPanel filterPanel = new JPanel();
-        filterPanel.setLayout(new GridLayout(1, 4, 10, 10));
-        filterPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
-        filterPanel.setBackground(new Color(240, 240, 240));
-        
-        // Module selection
-        filterPanel.add(new JLabel("Select Module:"));
-        moduleComboBox = new JComboBox<>();
-        List<Module> modules = MockDataManager.getModulesByOrganiser(user.getId());
-        for (Module module : modules) {
-            moduleComboBox.addItem(module.getName() + " (" + module.getId() + ")");
-        }
-        if (!modules.isEmpty()) {
-            selectedModuleId = modules.get(0).getId();
-        }
-        moduleComboBox.addActionListener(e -> {
-            String selected = (String) moduleComboBox.getSelectedItem();
-            if (selected != null) {
-                selectedModuleId = selected.substring(selected.indexOf('(') + 1, selected.indexOf(')'));
-                refreshApplicantList();
-            }
-        });
-        filterPanel.add(moduleComboBox);
-        
-        // English level filter
-        filterPanel.add(new JLabel("English Level:"));
-        englishLevelComboBox = new JComboBox<>(new String[]{"All", "Beginner", "Intermediate", "Advanced"});
-        englishLevelComboBox.addActionListener(e -> refreshApplicantList());
-        filterPanel.add(englishLevelComboBox);
-        
-        // Course filter
-        JPanel courseFilterPanel = new JPanel();
-        courseFilterPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
-        courseFilterPanel.add(new JLabel("Previous Course:"));
-        courseFilterField = new JTextField(15);
-        courseFilterField.addActionListener(e -> refreshApplicantList());
-        courseFilterPanel.add(courseFilterField);
-        mainPanel.add(courseFilterPanel, BorderLayout.CENTER);
-        
-        // Table panel
-        JPanel tablePanel = new JPanel();
-        tablePanel.setLayout(new BorderLayout());
-        tablePanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 20, 20));
-        
-        // Table model
-        String[] columnNames = {"ID", "Name", "Course", "English Level", "Status", "Action"};
-        tableModel = new DefaultTableModel(columnNames, 0) {
+        this.currentUser = user;
+        setLayout(new BorderLayout(10, 10));
+        initializeUI();
+    }
+
+    private void initializeUI() {
+        add(createTitlePanel(), BorderLayout.NORTH);
+        add(createTablePanel(), BorderLayout.CENTER);
+        add(createFilterPanel(), BorderLayout.SOUTH);
+    }
+
+    private JPanel createTitlePanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+
+        JLabel titleLabel = new JLabel(
+                "MO Applicant List - Module: " + currentUser.getModuleName(),
+                SwingConstants.CENTER
+        );
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 22));
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        panel.add(titleLabel, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JScrollPane createTablePanel() {
+        String[] columns = {
+                "ID", "Name", "Course", "English Level",
+                "Completed Courses", "CV", "Status", "Action"
+        };
+
+        tableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return column == 5; // Only action column is editable
+                return column == 5 || column == 7;
             }
         };
-        
+
         applicantTable = new JTable(tableModel);
-        applicantTable.setRowHeight(30);
-        applicantTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
-            @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-                if (column == 4) { // Status column
-                    String status = (String) value;
-                    if (status.equals("Shortlisted")) {
-                        c.setBackground(new Color(220, 255, 220));
-                    } else if (status.equals("Rejected")) {
-                        c.setBackground(new Color(255, 220, 220));
-                    } else {
-                        c.setBackground(table.getBackground());
-                    }
-                } else {
-                    c.setBackground(table.getBackground());
-                }
-                return c;
-            }
-        });
-        
-        JScrollPane scrollPane = new JScrollPane(applicantTable);
-        tablePanel.add(scrollPane, BorderLayout.CENTER);
-        
-        mainPanel.add(filterPanel, BorderLayout.NORTH);
-        mainPanel.add(tablePanel, BorderLayout.CENTER);
-        
-        add(mainPanel);
-        refreshApplicantList();
+        applicantTable.setRowHeight(35);
+
+        loadApplicantData();
+
+        sorter = new TableRowSorter<>(tableModel);
+        applicantTable.setRowSorter(sorter);
+
+        applicantTable.getColumn("CV").setCellRenderer(new ButtonRenderer());
+        applicantTable.getColumn("CV").setCellEditor(new CVButtonEditor(new JCheckBox()));
+
+        applicantTable.getColumn("Action").setCellRenderer(new ButtonRenderer());
+        applicantTable.getColumn("Action").setCellEditor(new StatusButtonEditor(new JCheckBox()));
+
+        return new JScrollPane(applicantTable);
     }
-    
-    private void refreshApplicantList() {
+
+    private JPanel createFilterPanel() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+
+        courseFilterBox = new JComboBox<>(new String[]{
+                "All", "Java", "Database", "OOP", "Python", "ML"
+        });
+
+        englishFilterBox = new JComboBox<>(new String[]{
+                "All", "IELTS 6.5", "IELTS 7.0", "IELTS 7.5"
+        });
+
+        nameFilterField = new JTextField(10);
+
+        JButton filterButton = new JButton("Filter");
+        JButton clearButton = new JButton("Clear");
+
+        filterButton.addActionListener(e -> applyFilters());
+        clearButton.addActionListener(e -> clearFilters());
+
+        panel.add(new JLabel("Completed Course:"));
+        panel.add(courseFilterBox);
+        panel.add(new JLabel("English Level:"));
+        panel.add(englishFilterBox);
+        panel.add(new JLabel("Name:"));
+        panel.add(nameFilterField);
+        panel.add(filterButton);
+        panel.add(clearButton);
+
+        return panel;
+    }
+
+    private void loadApplicantData() {
         tableModel.setRowCount(0);
-        
-        List<Applicant> applicants = MockDataManager.getApplicantsByModule(selectedModuleId);
-        String englishLevelFilter = (String) englishLevelComboBox.getSelectedItem();
-        String courseFilter = courseFilterField.getText().trim().toLowerCase();
-        
-        for (Applicant applicant : applicants) {
-            // Apply filters
-            if (!englishLevelFilter.equals("All") && !applicant.getEnglishLevel().equals(englishLevelFilter)) {
-                continue;
+
+        for (Applicant applicant : MockDataManager.getApplicants()) {
+            if (applicant.getModuleName().equals(currentUser.getModuleName())) {
+                tableModel.addRow(new Object[]{
+                        applicant.getApplicantId(),
+                        applicant.getName(),
+                        applicant.getCourse(),
+                        applicant.getEnglishLevel(),
+                        applicant.getCompletedCourses(),
+                        "View CV",
+                        applicant.getStatus(),
+                        "Update Status"
+                });
             }
-            
-            if (!courseFilter.isEmpty()) {
-                boolean found = false;
-                for (String course : applicant.getPreviousCourses()) {
-                    if (course.toLowerCase().contains(courseFilter)) {
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) {
-                    continue;
-                }
-            }
-            
-            // Add to table
-            Object[] row = new Object[6];
-            row[0] = applicant.getId();
-            row[1] = applicant.getName();
-            row[2] = applicant.getCourse();
-            row[3] = applicant.getEnglishLevel();
-            row[4] = applicant.getStatus();
-            row[5] = "View CV | Shortlist | Reject";
-            tableModel.addRow(row);
         }
-        
-        // Add action listeners for buttons
-        applicantTable.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                int row = applicantTable.rowAtPoint(evt.getPoint());
-                int col = applicantTable.columnAtPoint(evt.getPoint());
-                if (row >= 0 && col == 5) {
-                    String applicantId = (String) applicantTable.getValueAt(row, 0);
-                    Applicant applicant = MockDataManager.getApplicantById(applicantId);
-                    if (applicant != null) {
-                        showActionMenu(applicant, row);
-                    }
+    }
+
+    private void applyFilters() {
+        List<RowFilter<Object, Object>> filters = new ArrayList<>();
+
+        String selectedCourse = (String) courseFilterBox.getSelectedItem();
+        String selectedEnglish = (String) englishFilterBox.getSelectedItem();
+        String keyword = nameFilterField.getText().trim();
+
+        if (!"All".equals(selectedCourse)) {
+            filters.add(RowFilter.regexFilter("(?i)" + selectedCourse, 4));
+        }
+
+        if (!"All".equals(selectedEnglish)) {
+            filters.add(RowFilter.regexFilter("(?i)" + selectedEnglish, 3));
+        }
+
+        if (!keyword.isEmpty()) {
+            filters.add(RowFilter.regexFilter("(?i)" + keyword, 1));
+        }
+
+        if (filters.isEmpty()) {
+            sorter.setRowFilter(null);
+        } else {
+            sorter.setRowFilter(RowFilter.andFilter(filters));
+        }
+    }
+
+    private void clearFilters() {
+        courseFilterBox.setSelectedIndex(0);
+        englishFilterBox.setSelectedIndex(0);
+        nameFilterField.setText("");
+        sorter.setRowFilter(null);
+    }
+
+    class ButtonRenderer extends JButton implements TableCellRenderer {
+        public ButtonRenderer() {
+            setOpaque(true);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                                                       boolean isSelected, boolean hasFocus,
+                                                       int row, int column) {
+            setText(value == null ? "Button" : value.toString());
+            return this;
+        }
+    }
+
+    class CVButtonEditor extends DefaultCellEditor {
+        private final JButton button;
+        private int currentRow;
+
+        public CVButtonEditor(JCheckBox checkBox) {
+            super(checkBox);
+
+            button = new JButton("View CV");
+            button.addActionListener(e -> {
+                String name = tableModel.getValueAt(currentRow, 1).toString();
+                String course = tableModel.getValueAt(currentRow, 2).toString();
+                String english = tableModel.getValueAt(currentRow, 3).toString();
+                String completed = tableModel.getValueAt(currentRow, 4).toString();
+
+                JOptionPane.showMessageDialog(
+                        button,
+                        "Name: " + name +
+                                "\nCourse: " + course +
+                                "\nEnglish Level: " + english +
+                                "\nCompleted Courses: " + completed +
+                                "\nSkills: Communication, Teamwork, Subject Knowledge" +
+                                "\nExperience: Tutoring / Lab Support",
+                        "CV Details",
+                        JOptionPane.INFORMATION_MESSAGE
+                );
+
+                fireEditingStopped();
+            });
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value,
+                                                     boolean isSelected, int row, int column) {
+            currentRow = table.convertRowIndexToModel(row);
+            return button;
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return "View CV";
+        }
+    }
+
+    class StatusButtonEditor extends DefaultCellEditor {
+        private final JButton button;
+        private int currentRow;
+
+        public StatusButtonEditor(JCheckBox checkBox) {
+            super(checkBox);
+
+            button = new JButton("Update Status");
+            button.addActionListener(e -> {
+                String[] options = {"Shortlisted", "Rejected"};
+                String selected = (String) JOptionPane.showInputDialog(
+                        button,
+                        "Select status:",
+                        "Update Status",
+                        JOptionPane.PLAIN_MESSAGE,
+                        null,
+                        options,
+                        options[0]
+                );
+
+                if (selected != null) {
+                    tableModel.setValueAt(selected, currentRow, 6);
                 }
-            }
-        });
-    }
-    
-    private void showActionMenu(Applicant applicant, int row) {
-        JPopupMenu menu = new JPopupMenu();
-        
-        JMenuItem viewCVItem = new JMenuItem("View CV");
-        viewCVItem.addActionListener(e -> showCV(applicant));
-        menu.add(viewCVItem);
-        
-        JMenuItem shortlistItem = new JMenuItem("Shortlist");
-        shortlistItem.addActionListener(e -> {
-            MockDataManager.updateApplicantStatus(applicant.getId(), "Shortlisted");
-            tableModel.setValueAt("Shortlisted", row, 4);
-            refreshApplicantList();
-        });
-        menu.add(shortlistItem);
-        
-        JMenuItem rejectItem = new JMenuItem("Reject");
-        rejectItem.addActionListener(e -> {
-            MockDataManager.updateApplicantStatus(applicant.getId(), "Rejected");
-            tableModel.setValueAt("Rejected", row, 4);
-            refreshApplicantList();
-        });
-        menu.add(rejectItem);
-        
-        menu.show(applicantTable, 100, 100);
-    }
-    
-    private void showCV(Applicant applicant) {
-        JFrame cvFrame = new JFrame("CV: " + applicant.getName());
-        cvFrame.setSize(500, 400);
-        cvFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        cvFrame.setLocationRelativeTo(this);
-        
-        JTextArea cvTextArea = new JTextArea(applicant.getCv());
-        cvTextArea.setEditable(false);
-        cvTextArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
-        cvTextArea.setLineWrap(true);
-        cvTextArea.setWrapStyleWord(true);
-        
-        JScrollPane scrollPane = new JScrollPane(cvTextArea);
-        cvFrame.add(scrollPane);
-        cvFrame.setVisible(true);
+
+                fireEditingStopped();
+            });
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value,
+                                                     boolean isSelected, int row, int column) {
+            currentRow = table.convertRowIndexToModel(row);
+            return button;
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return "Update Status";
+        }
     }
 }

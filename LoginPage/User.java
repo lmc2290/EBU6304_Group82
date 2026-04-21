@@ -1,9 +1,5 @@
 package LoginPage;
 
-/**
- * Entity Class
- * Represents the core data object for a system user.
- */
 public class User {
     private String id;
     private String role; // "Admin", "MO", or "TA"
@@ -25,16 +21,8 @@ public class User {
         return id;
     }
 
-    public void setId(String id) {
-        this.id = id;
-    }
-
     public String getRole() {
         return role;
-    }
-
-    public void setRole(String role) {
-        this.role = role;
     }
 
     public String getModuleName() {
