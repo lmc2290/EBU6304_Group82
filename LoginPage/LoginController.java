@@ -37,6 +37,7 @@ public class LoginController {
 
             } else if (idNum >= 1 && idNum <= 100) {
                 // 给 MO 分配 moduleName，避免 applicant list 为空
+                String moduleName = assignModuleToMO(idNum);
                 String moduleName;
                 if (idNum <= 50) {
                     moduleName = "CS101";
@@ -60,21 +61,48 @@ public class LoginController {
     }
 
     /**
+     * Assigns module to MO based on ID
+     */
+    private String assignModuleToMO(int idNum) {
+        if (idNum <= 50) {
+            return "CS101";
+        } else {
+            return "CS202";
+        }
+    }
+
+    /**
      * Routes the user to the appropriate dashboard based on their role.
      */
     private void routeToDashboard(User user) {
         loginUI.setVisible(false);
 
+        // Instantiate the specific dashboard based on the user's role
+        DashBoardUI dashboard = createDashboardForUser(user);
+
+        // Display the corresponding dashboard
+        if (dashboard != null) {
+            dashboard.setVisible(true);
+            System.out.println("Routing complete for: " + user.getRole());
+            System.out.println("User module: " + user.getModuleName());
+        }
+    }
         DashBoardUI dashboard = null;
 
+    /**
+     * Creates the appropriate dashboard based on user role
+     */
+    private DashBoardUI createDashboardForUser(User user) {
         switch (user.getRole()) {
             case "Admin":
-                dashboard = new AdminDashboardUI(user);
-                break;
+                return new AdminDashboardUI(user);
             case "MO":
-                dashboard = new MODashboardUI(user);
-                break;
+                return new MODashboardUI(user);
             case "TA":
+                return new TADashboardUI(user);
+            default:
+                loginUI.showError("Unknown role detected.");
+                return null;
                 TAController taController = new TAController();
                 dashboard = new TADashboardUI(user, taController);
                 break;

@@ -6,7 +6,7 @@ package LoginPage;
  */
 public class User {
     private String id;
-    private String role;
+    private String role; // "Admin", "MO", or "TA"
     private String moduleName;
 
 
