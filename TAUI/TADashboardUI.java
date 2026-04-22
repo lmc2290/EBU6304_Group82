@@ -12,7 +12,6 @@ import java.util.List;
 public class TADashboardUI extends DashBoardUI {
 
     private TAController controller;
-
     private JComboBox<String> moduleCombo;
     private JComboBox<String> statusCombo;
     private JComboBox<String> jobTypeCombo;
@@ -33,7 +32,7 @@ public class TADashboardUI extends DashBoardUI {
         // 2. Now initialize the controller.
         this.controller = controller;
 
-        // 3. [FIX APPLIED] Safely load the data AFTER the controller is assigned.
+        // 3. Safely load the data AFTER the controller is assigned.
         loadInitialData();
     }
 
@@ -50,9 +49,17 @@ public class TADashboardUI extends DashBoardUI {
 
     private void buildSplitPane() {
         JPanel leftPanel = new JPanel(new BorderLayout());
+        JPanel topMenuBar = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        // 1. New "My Applications" Button (US-08)
+        JButton myAppsBtn = new JButton("My Applications");
+        myAppsBtn.setBackground(new Color(255, 140, 0)); // Orange for distinction
+        myAppsBtn.setForeground(Color.WHITE);
+        myAppsBtn.setFont(new Font("Arial", Font.BOLD, 14));
+        myAppsBtn.setOpaque(true);
+        myAppsBtn.setBorderPainted(false);
+        topMenuBar.add(myAppsBtn);
 
         // Top Menu Bar for CV Management
-        JPanel topMenuBar = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton manageCVBtn = new JButton("Manage My CVs");
         manageCVBtn.setBackground(new Color(51, 153, 255)); // Blue button
         manageCVBtn.setForeground(Color.WHITE);
@@ -166,6 +173,11 @@ public class TADashboardUI extends DashBoardUI {
                 ApplicationDialog dialog = new ApplicationDialog(this, controller, selectedJob, currentUser.getId());
                 dialog.setVisible(true);
             }
+        });
+        // Event listener for the new "My Applications" button
+        myAppsBtn.addActionListener(e -> {
+            MyApplicationsDialog myAppsDialog = new MyApplicationsDialog(this, controller, currentUser.getId());
+            myAppsDialog.setVisible(true);
         });
 
         manageCVBtn.addActionListener(e -> {
