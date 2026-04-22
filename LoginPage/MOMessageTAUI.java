@@ -36,17 +36,17 @@ public class MOMessageTAUI extends JFrame {
         // Module selection
         filterPanel.add(new JLabel("Select Module:"));
         moduleComboBox = new JComboBox<>();
-        List<Module> modules = MockDataManager.getModulesByOrganiser(user.getId());
+        List<Module> modules = MockDataManager.getModules();
         for (Module module : modules) {
-            moduleComboBox.addItem(module.getName() + " (" + module.getId() + ")");
+            moduleComboBox.addItem(module.getModuleName());
         }
         if (!modules.isEmpty()) {
-            selectedModuleId = modules.get(0).getId();
+            selectedModuleId = modules.get(0).getModuleName();
         }
         moduleComboBox.addActionListener(e -> {
             String selected = (String) moduleComboBox.getSelectedItem();
             if (selected != null) {
-                selectedModuleId = selected.substring(selected.indexOf('(') + 1, selected.indexOf(')'));
+                selectedModuleId = selected;
                 refreshTAList();
             }
         });

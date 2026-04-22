@@ -174,11 +174,21 @@ public class MODashboardUI extends DashBoardUI {
         return card;
     }
 
-    private void openPanelInFrame(String title, JFrame panel) {
-        panel.setTitle(title);
-        panel.setSize(800, 600);
-        panel.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        panel.setLocationRelativeTo(this);
-        panel.setVisible(true);
+    private void openPanelInFrame(String title, Object panel) {
+        if (panel instanceof JPanel) {
+            JFrame frame = new JFrame(title);
+            frame.setSize(800, 600);
+            frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+            frame.setLocationRelativeTo(this);
+            frame.add((JPanel) panel);
+            frame.setVisible(true);
+        } else if (panel instanceof JFrame) {
+            JFrame frame = (JFrame) panel;
+            frame.setTitle(title);
+            frame.setSize(800, 600);
+            frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+            frame.setLocationRelativeTo(this);
+            frame.setVisible(true);
+        }
     }
 }

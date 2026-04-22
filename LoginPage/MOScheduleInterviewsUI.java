@@ -36,17 +36,17 @@ public class MOScheduleInterviewsUI extends JFrame {
         // Module selection
         filterPanel.add(new JLabel("Select Module:"));
         moduleComboBox = new JComboBox<>();
-        List<Module> modules = MockDataManager.getModulesByOrganiser(user.getId());
+        List<Module> modules = MockDataManager.getModules();
         for (Module module : modules) {
-            moduleComboBox.addItem(module.getName() + " (" + module.getId() + ")");
+            moduleComboBox.addItem(module.getModuleName());
         }
         if (!modules.isEmpty()) {
-            selectedModuleId = modules.get(0).getId();
+            selectedModuleId = modules.get(0).getModuleName();
         }
         moduleComboBox.addActionListener(e -> {
             String selected = (String) moduleComboBox.getSelectedItem();
             if (selected != null) {
-                selectedModuleId = selected.substring(selected.indexOf('(') + 1, selected.indexOf(')'));
+                selectedModuleId = selected;
                 refreshShortlistedList();
             }
         });
@@ -86,7 +86,7 @@ public class MOScheduleInterviewsUI extends JFrame {
                 int col = shortlistedTable.columnAtPoint(evt.getPoint());
                 if (row >= 0 && col == 4) {
                     String applicantId = (String) shortlistedTable.getValueAt(row, 0);
-                    Applicant applicant = MockDataManager.getApplicantById(applicantId);
+                    Applicant applicant = getApplicantById(applicantId);
                     if (applicant != null) {
                         showInterviewMenu(applicant);
                     }
@@ -98,12 +98,12 @@ public class MOScheduleInterviewsUI extends JFrame {
     private void refreshShortlistedList() {
         tableModel.setRowCount(0);
         
-        List<Applicant> applicants = MockDataManager.getApplicantsByModule(selectedModuleId);
+        List<Applicant> applicants = MockDataManager.getApplicants();
         for (Applicant applicant : applicants) {
-            if (applicant.getStatus().equals("Shortlisted")) {
+            if (applicant.getModuleName().equals(selectedModuleId) && applicant.getStatus().equals("Shortlisted")) {
                 // Add to table
                 Object[] row = new Object[5];
-                row[0] = applicant.getId();
+                row[0] = applicant.getApplicantId();
                 row[1] = applicant.getName();
                 row[2] = applicant.getCourse();
                 row[3] = applicant.getEnglishLevel();
@@ -213,5 +213,14 @@ public class MOScheduleInterviewsUI extends JFrame {
         
         dialog.add(panel);
         dialog.setVisible(true);
+    }
+    
+    private Applicant getApplicantById(String applicantId) {
+        for (Applicant applicant : MockDataManager.getApplicants()) {
+            if (applicant.getApplicantId().equals(applicantId)) {
+                return applicant;
+            }
+        }
+        return null;
     }
 }
