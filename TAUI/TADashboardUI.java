@@ -57,8 +57,8 @@ public class TADashboardUI extends DashBoardUI {
         leftPanel.setPreferredSize(new Dimension(300, 0));
         leftPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
-        // --- 1.1 Personal Info Section ---
-        JPanel personalPanel = new JPanel(new GridLayout(2, 1, 10, 10));
+        // --- 1.1 Personal Info & AI Tools Section ---
+        JPanel personalPanel = new JPanel(new GridLayout(3, 1, 10, 10)); // 改成 3 行
         personalPanel.setBorder(BorderFactory.createTitledBorder(
                 BorderFactory.createLineBorder(Color.GRAY), "Personal Hub", TitledBorder.LEFT, TitledBorder.TOP, new Font("Arial", Font.BOLD, 14)));
 
@@ -67,15 +67,29 @@ public class TADashboardUI extends DashBoardUI {
         myAppsBtn.setForeground(Color.WHITE);
         myAppsBtn.setFont(new Font("Arial", Font.BOLD, 14));
         myAppsBtn.setFocusPainted(false);
+        myAppsBtn.setOpaque(true);         // [Mac Fix]
+        myAppsBtn.setBorderPainted(false); // [Mac Fix]
 
         JButton manageCVBtn = new JButton("My Profile");
         manageCVBtn.setBackground(new Color(51, 153, 255));
         manageCVBtn.setForeground(Color.WHITE);
         manageCVBtn.setFont(new Font("Arial", Font.BOLD, 14));
         manageCVBtn.setFocusPainted(false);
+        manageCVBtn.setOpaque(true);         // [Mac Fix]
+        manageCVBtn.setBorderPainted(false); // [Mac Fix]
+
+        // [New]: 智能匹配按钮
+        JButton smartMatchBtn = new JButton("🌟 Smart Match");
+        smartMatchBtn.setBackground(new Color(138, 43, 226)); // 酷炫的紫色
+        smartMatchBtn.setForeground(Color.WHITE);
+        smartMatchBtn.setFont(new Font("Arial", Font.BOLD, 14));
+        smartMatchBtn.setFocusPainted(false);
+        smartMatchBtn.setOpaque(true);         // [Mac Fix]
+        smartMatchBtn.setBorderPainted(false); // [Mac Fix]
 
         personalPanel.add(myAppsBtn);
         personalPanel.add(manageCVBtn);
+        personalPanel.add(smartMatchBtn); // 加入面板
 
         // --- 1.2 Filters Section ---
         JPanel filterPanel = new JPanel(new GridLayout(11, 1, 5, 5));
@@ -200,6 +214,8 @@ public class TADashboardUI extends DashBoardUI {
                 ApplicationDialog dialog = new ApplicationDialog(this, controller, currentSelectedJob, currentUser.getId());
                 dialog.setVisible(true);
             }
+            applyBtn.setOpaque(true);
+            applyBtn.setBorderPainted(false);
         });
 
         myAppsBtn.addActionListener(e -> {
@@ -213,7 +229,24 @@ public class TADashboardUI extends DashBoardUI {
             ProfileManagerDialog profileDialog = new ProfileManagerDialog(this, controller, currentUser.getId());
             profileDialog.setVisible(true);
         });
+
+        smartMatchBtn.addActionListener(e -> {
+            UserProfile p = controller.getUserProfile(currentUser.getId());
+            if (p == null || p.getName() == null || p.getName().isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                        "Please complete your 'My Profile' first so we can analyze your skills!",
+                        "Profile Required", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            List<Job> recommended = controller.getRecommendedJobs(currentUser.getId());
+            updateJobCards(recommended);
+
+            JOptionPane.showMessageDialog(this,
+                    "Jobs have been sorted based on your profile compatibility!",
+                    "Smart Match Complete", JOptionPane.INFORMATION_MESSAGE);
+        });
     }
+
 
     /**
      * Loads jobs and populates the grid view on startup.

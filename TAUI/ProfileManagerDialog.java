@@ -99,6 +99,8 @@ public class ProfileManagerDialog extends JDialog {
         saveBtn.setFont(new Font("Arial", Font.BOLD, 14));
         saveBtn.setBackground(new Color(51, 153, 255));
         saveBtn.setForeground(Color.WHITE);
+        saveBtn.setOpaque(true);
+        saveBtn.setBorderPainted(false);
         saveBtn.addActionListener(e -> handleSave());
         add(saveBtn, BorderLayout.SOUTH);
     }
