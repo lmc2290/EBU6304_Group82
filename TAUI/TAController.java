@@ -234,4 +234,47 @@ public class TAController {
             return false;
         }
     }
+    /**
+     * [Feature US-07]: Withdraw Application Logic
+     * Processes the withdrawal request for a specific application record.
+     * Implements status constraints to prevent withdrawing applications that
+     * are already finalized (e.g., Hired, Rejected) or already withdrawn.
+     * * @param record The ApplicationRecord to be withdrawn.
+     * @return boolean True if withdrawal was successful, false if constrained or null.
+     */
+    public boolean withdrawApplication(ApplicationRecord record) {
+        // 1. Defensive null check
+        if (record == null) {
+            System.err.println("Withdrawal Error: Record is null.");
+            return false;
+        }
+
+        String currentStatus = record.getStatus();
+
+        // 2. State Machine Validation (US-07 AC4)
+        // Cannot withdraw if the decision has already been made or already withdrawn.
+        if (currentStatus.equalsIgnoreCase("Hired") ||
+                currentStatus.equalsIgnoreCase("Rejected") ||
+                currentStatus.equalsIgnoreCase("Withdrawn")) {
+            System.err.println("Withdrawal Blocked: Current status '" + currentStatus + "' does not allow withdrawal.");
+            return false;
+        }
+
+        try {
+            // 3. Execute State Change (US-07 AC3)
+            record.setStatus("Withdrawn");
+
+            // Log transaction for audit purposes
+            System.out.println("=== Application Withdrawn ===");
+            System.out.println("App ID: " + record.getApplicationId());
+            System.out.println("New Status: " + record.getStatus());
+            System.out.println("=============================");
+
+            return true;
+        } catch (Exception e) {
+            System.err.println("System Error during application withdrawal.");
+            e.printStackTrace();
+            return false;
+        }
+    }
 }
