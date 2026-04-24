@@ -277,4 +277,96 @@ public class TAController {
             return false;
         }
     }
+    //smart match
+    /**
+     * Nested inner class to hold a Job and its calculated compatibility score.
+     * Implements Comparable to allow easy sorting by score in descending order.
+     */
+    private static class JobScore implements Comparable<JobScore> {
+        Job job;
+        int score;
+
+        public JobScore(Job job, int score) {
+            this.job = job;
+            this.score = score;
+        }
+
+        @Override
+        public int compareTo(JobScore other) {
+            // Descending order: highest score first
+            return Integer.compare(other.score, this.score);
+        }
+    }
+
+    /**
+     * Core Algorithm: Calculates and sorts all available jobs based on the user's profile.
+     * Uses a weighted scoring system based on core skills, other skills, and experience keywords.
+     * * @param userId The ID of the current user.
+     * @return A sorted List of Jobs from most recommended to least recommended.
+     */
+    public List<Job> getRecommendedJobs(String userId) {
+        UserProfile profile = getUserProfile(userId);
+
+        // Defensive check: If profile is empty, just return the default list
+        if (profile == null || profile.getName() == null) {
+            System.err.println("Smart Match: No profile found, returning default list.");
+            return new ArrayList<>(allJobs);
+        }
+
+        List<JobScore> scoredJobs = new ArrayList<>();
+
+        for (Job job : allJobs) {
+            int currentScore = calculateMatchScore(job, profile);
+            scoredJobs.add(new JobScore(job, currentScore));
+        }
+
+        // Sort the list based on the compareTo method (descending score)
+        java.util.Collections.sort(scoredJobs);
+
+        // Extract the sorted Job objects back into a standard list
+        List<Job> recommendedList = new ArrayList<>();
+        for (JobScore js : scoredJobs) {
+            System.out.println("Match Score for [" + js.job.getTitle() + "]: " + js.score); // Console log for debugging
+            recommendedList.add(js.job);
+        }
+
+        return recommendedList;
+    }
+
+    /**
+     * Helper method to compute the weighted score for a single job against a profile.
+     */
+    private int calculateMatchScore(Job job, UserProfile profile) {
+        int score = 0;
+        String requiredSkill = job.getRequiredSkill().toLowerCase();
+
+        // 1. Core Skills Match (Weight: +50)
+        if (profile.getSelectedSkills() != null) {
+            for (String userSkill : profile.getSelectedSkills()) {
+                if (userSkill.toLowerCase().contains(requiredSkill) || requiredSkill.contains(userSkill.toLowerCase())) {
+                    score += 50;
+                    break; // Max 50 points from core skills to prevent score inflation
+                }
+            }
+        }
+
+        // 2. Other Skills Match (Weight: +30)
+        String otherSkills = profile.getOtherSkills();
+        if (otherSkills != null && otherSkills.toLowerCase().contains(requiredSkill)) {
+            score += 30;
+        }
+
+        // 3. Experience Keyword Match (Weight: +20)
+        String experience = profile.getExperience();
+        if (experience != null && experience.toLowerCase().contains(requiredSkill)) {
+            score += 20;
+        }
+
+        // 4. Status Penalty: Deprioritize closed jobs (Penalty: -100)
+        if (job.isExpired()) {
+            score -= 100;
+        }
+
+        return score;
+    }
 }

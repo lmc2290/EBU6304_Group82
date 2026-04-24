@@ -145,6 +145,10 @@ public class MyApplicationsDialog extends JDialog {
     /**
      * Engine to format the internal ApplicationRecord object into a user-friendly text display.
      */
+    /**
+     * Engine to format the internal ApplicationRecord object into a user-friendly text display.
+     * [Updated]: Upgraded to support the new UserProfile system instead of physical CV files.
+     */
     private void displayApplicationDetails(ApplicationRecord record) {
         StringBuilder sb = new StringBuilder();
         sb.append("=========================================\n");
@@ -161,10 +165,28 @@ public class MyApplicationsDialog extends JDialog {
         sb.append(String.format("%-15s: %s\n", "Submitted On", record.getFormattedSubmissionDate()));
         sb.append(String.format("%-15s: %s\n", "Tracking ID", record.getApplicationId().substring(0, 8) + "..."));
 
+        // ==========================================
+        // 核心修改部分：把原来的 CV 变成了展示 Profile 档案信息
+        // ==========================================
         sb.append("\n=========================================\n");
-        sb.append(" ATTACHED DOCUMENTS\n");
+        sb.append(" APPLICANT PROFILE\n");
         sb.append("=========================================\n");
-        sb.append(String.format("%-15s: %s\n", "Resume / CV", record.getSubmittedCV().getOriginalName()));
+        UserProfile profile = record.getSubmittedProfile();
+
+        if (profile != null) {
+            sb.append(String.format("%-15s: %s\n", "Name", profile.getName()));
+            sb.append(String.format("%-15s: %s\n", "Academic", profile.getGrade() + " in " + profile.getCollege()));
+
+            // 将选择的技能列表转成逗号分隔的字符串
+            String skills = profile.getSelectedSkills() != null ? String.join(", ", profile.getSelectedSkills()) : "None";
+            sb.append(String.format("%-15s: %s\n", "Core Skills", skills));
+
+            if (profile.getOtherSkills() != null && !profile.getOtherSkills().isEmpty()) {
+                sb.append(String.format("%-15s: %s\n", "Other Skills", profile.getOtherSkills()));
+            }
+        } else {
+            sb.append("  (No profile data attached)\n");
+        }
 
         sb.append("\nCover Letter:\n");
         String cl = record.getCoverLetter();
