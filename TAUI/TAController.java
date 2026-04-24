@@ -32,6 +32,17 @@ public class TAController {
      * Default constructor. Initializes the data structures and populates the
      * system with mock job data for demonstration purposes.
      */
+    // 在 TAController 类中修改
+    private Map<String, UserProfile> userProfileMap = new HashMap<>();
+
+    public UserProfile getUserProfile(String userId) {
+        // 如果没有档案，返回一个空对象避免空指针
+        return userProfileMap.getOrDefault(userId, new UserProfile());
+    }
+
+    public void saveUserProfile(String userId, UserProfile profile) {
+        userProfileMap.put(userId, profile);
+    }
     public TAController() {
         allJobs = new ArrayList<>();
 
@@ -52,6 +63,7 @@ public class TAController {
         userCVsMap = new HashMap<>();
         userApplicationsMap = new HashMap<>();
     }
+
 
     // ==========================================
     // Core Job Retrieval and Filtering Logic
@@ -181,29 +193,21 @@ public class TAController {
         return userApplicationsMap.computeIfAbsent(userId, k -> new ArrayList<>());
     }
 
-    /**
-     * Core business logic to process and persist a new job application.
-     * Validates input, prevents duplicates, and records the transaction.
-     * * @param targetJob   The Job entity being applied to.
-     * @param userId      The unique ID of the user submitting the application.
-     * @param selectedCV  The specific CVRecord chosen for this application.
-     * @param coverLetter The submitted cover letter text (can be empty).
-     * @return boolean    True if the submission was successful, false otherwise.
-     */
-    public boolean submitApplication(Job targetJob, String userId, CVRecord selectedCV, String coverLetter) {
+
+    // 将方法签名中的 CVRecord selectedCV 改成 UserProfile selectedProfile
+    public boolean submitApplication(Job targetJob, String userId, UserProfile selectedProfile, String coverLetter) {
 
         // 1. Strict null-check validation
-        if (targetJob == null || userId == null || selectedCV == null) {
+        if (targetJob == null || userId == null || selectedProfile == null) {
             System.err.println("Validation Error: Missing critical application data.");
             return false;
         }
 
-        // 2. Prevent duplicate active applications for the exact same job
+        // 2. Prevent duplicate active applications
         List<ApplicationRecord> existingApps = getUserApplications(userId);
         for (ApplicationRecord app : existingApps) {
             if (app.getTargetJob().getId().equals(targetJob.getId())) {
                 String currentStatus = app.getStatus();
-                // If it's not Withdrawn or Rejected, it means it's active (Pending/Interviewing)
                 if (!currentStatus.equals("Withdrawn") && !currentStatus.equals("Rejected")) {
                     System.err.println("Duplicate Error: User already has an active application for this job.");
                     return false;
@@ -212,19 +216,14 @@ public class TAController {
         }
 
         try {
-            // 3. Instantiate the new application record entity
-            ApplicationRecord newRecord = new ApplicationRecord(targetJob, userId, selectedCV, coverLetter);
-
-            // 4. Persist the record into the user's isolated application list
+            // 3. 实例化时传入 selectedProfile
+            ApplicationRecord newRecord = new ApplicationRecord(targetJob, userId, selectedProfile, coverLetter);
             existingApps.add(newRecord);
 
-            // 5. System logging for debugging and audit trails
             System.out.println("=== Application Transaction Success ===");
             System.out.println("Generated App ID: " + newRecord.getApplicationId());
-            System.out.println("Applicant ID: " + userId);
+            System.out.println("Applicant Name: " + selectedProfile.getName()); // 打印档案里的名字
             System.out.println("Target Position: " + targetJob.getTitle());
-            System.out.println("Selected CV: " + selectedCV.getOriginalName());
-            System.out.println("Timestamp: " + newRecord.getFormattedSubmissionDate());
             System.out.println("=======================================");
 
             return true;
