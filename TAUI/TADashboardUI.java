@@ -1,75 +1,100 @@
 package TAUI;
 
 import LoginPage.DashBoardUI;
+
 import javax.swing.*;
+import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.util.List;
 
 /**
  * Boundary Class - TA Dashboard
- * Implements a Master-Detail view with advanced filtering capabilities.
+ * Redesigned with a CardLayout to support a Master-Detail workflow:
+ * Grid of Job Cards -> Click -> Detailed View.
  */
 public class TADashboardUI extends DashBoardUI {
 
     private TAController controller;
+
+    // UI Components for Filters
     private JComboBox<String> moduleCombo;
     private JComboBox<String> statusCombo;
     private JComboBox<String> jobTypeCombo;
     private JComboBox<String> skillsCombo;
     private JTextField searchField;
 
-    private DefaultListModel<Job> listModel;
-    private JList<Job> jobList;
+    // Right Panel Card Layout Components
+    private JPanel rightContainer;
+    private CardLayout cardLayout;
+    private JPanel gridPanel;
 
+    // Detail View Components
     private JTextArea detailsArea;
     private JButton applyBtn;
+    private Job currentSelectedJob; // 追踪当前正在查看的岗位
 
     public TADashboardUI(LoginPage.User user, TAController controller) {
-        // 1. super(user) will execute DashBoardUI's constructor,
-        //    which in turn calls the overridden initializeUI() below.
         super(user);
-
-        // 2. Now initialize the controller.
         this.controller = controller;
-
-        // 3. Safely load the data AFTER the controller is assigned.
         loadInitialData();
     }
 
     @Override
     protected void initializeUI() {
         setTitle("Teaching Assistant Dashboard - Job Portal (" + currentUser.getId() + ")");
-        setSize(950, 700);
+        setSize(1000, 750);
         setLocationRelativeTo(null);
+        setLayout(new BorderLayout());
 
         buildSplitPane();
-
-        // [FIX APPLIED] Removed loadInitialData() from here to prevent NullPointerException
     }
 
     private void buildSplitPane() {
-        JPanel leftPanel = new JPanel(new BorderLayout());
-        JPanel topMenuBar = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        // 1. New "My Applications" Button (US-08)
+        // ==========================================
+        // 1. LEFT PANEL (Personal Info & Filters)
+        // ==========================================
+        JPanel leftPanel = new JPanel(new BorderLayout(10, 10));
+        leftPanel.setPreferredSize(new Dimension(300, 0));
+        leftPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+
+        // --- 1.1 Personal Info & AI Tools Section ---
+        JPanel personalPanel = new JPanel(new GridLayout(3, 1, 10, 10)); // 改成 3 行
+        personalPanel.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(Color.GRAY), "Personal Hub", TitledBorder.LEFT, TitledBorder.TOP, new Font("Arial", Font.BOLD, 14)));
+
         JButton myAppsBtn = new JButton("My Applications");
-        myAppsBtn.setBackground(new Color(255, 140, 0)); // Orange for distinction
+        myAppsBtn.setBackground(new Color(255, 140, 0));
         myAppsBtn.setForeground(Color.WHITE);
         myAppsBtn.setFont(new Font("Arial", Font.BOLD, 14));
-        myAppsBtn.setOpaque(true);
-        myAppsBtn.setBorderPainted(false);
-        topMenuBar.add(myAppsBtn);
+        myAppsBtn.setFocusPainted(false);
+        myAppsBtn.setOpaque(true);         // [Mac Fix]
+        myAppsBtn.setBorderPainted(false); // [Mac Fix]
 
-        // Top Menu Bar for CV Management
-        JButton manageCVBtn = new JButton("Manage My CVs");
-        manageCVBtn.setBackground(new Color(51, 153, 255)); // Blue button
+        JButton manageCVBtn = new JButton("My Profile");
+        manageCVBtn.setBackground(new Color(51, 153, 255));
         manageCVBtn.setForeground(Color.WHITE);
         manageCVBtn.setFont(new Font("Arial", Font.BOLD, 14));
-        manageCVBtn.setOpaque(true);
-        manageCVBtn.setBorderPainted(false);
-        topMenuBar.add(manageCVBtn);
+        manageCVBtn.setFocusPainted(false);
+        manageCVBtn.setOpaque(true);         // [Mac Fix]
+        manageCVBtn.setBorderPainted(false); // [Mac Fix]
 
-        JPanel filterPanel = new JPanel(new GridLayout(6, 2, 5, 8));
-        filterPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        // [New]: 智能匹配按钮
+        JButton smartMatchBtn = new JButton("🌟 Smart Match");
+        smartMatchBtn.setBackground(new Color(138, 43, 226)); // 酷炫的紫色
+        smartMatchBtn.setForeground(Color.WHITE);
+        smartMatchBtn.setFont(new Font("Arial", Font.BOLD, 14));
+        smartMatchBtn.setFocusPainted(false);
+        smartMatchBtn.setOpaque(true);         // [Mac Fix]
+        smartMatchBtn.setBorderPainted(false); // [Mac Fix]
+
+        personalPanel.add(myAppsBtn);
+        personalPanel.add(manageCVBtn);
+        personalPanel.add(smartMatchBtn); // 加入面板
+
+        // --- 1.2 Filters Section ---
+        JPanel filterPanel = new JPanel(new GridLayout(11, 1, 5, 5));
+        filterPanel.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(Color.GRAY), "Search & Filter", TitledBorder.LEFT, TitledBorder.TOP, new Font("Arial", Font.BOLD, 14)));
 
         filterPanel.add(new JLabel("Module:"));
         moduleCombo = new JComboBox<>(new String[]{"All", "ECS401", "ECS414", "ECS505"});
@@ -91,70 +116,88 @@ public class TADashboardUI extends DashBoardUI {
         searchField = new JTextField();
         filterPanel.add(searchField);
 
+        // --- 1.3 Buttons Section ---
+        JPanel searchBtnPanel = new JPanel(new GridLayout(1, 2, 10, 0));
         JButton searchBtn = new JButton("Search");
         JButton clearBtn = new JButton("Clear Filters");
-        filterPanel.add(searchBtn);
-        filterPanel.add(clearBtn);
-      
-        JPanel leftTopContainer = new JPanel(new BorderLayout());
-        leftTopContainer.add(topMenuBar, BorderLayout.NORTH);
+        searchBtnPanel.add(searchBtn);
+        searchBtnPanel.add(clearBtn);
+        filterPanel.add(searchBtnPanel);
+
+        // Combine Left Elements
+        JPanel leftTopContainer = new JPanel(new BorderLayout(0, 20));
+        leftTopContainer.add(personalPanel, BorderLayout.NORTH);
         leftTopContainer.add(filterPanel, BorderLayout.CENTER);
-
-        listModel = new DefaultListModel<>();
-        jobList = new JList<>(listModel);
-        jobList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        jobList.setFont(new Font("Arial", Font.PLAIN, 14));
-
         leftPanel.add(leftTopContainer, BorderLayout.NORTH);
-        leftPanel.add(new JScrollPane(jobList), BorderLayout.CENTER);
 
-        // --- Right Panel ---
-        JPanel rightPanel = new JPanel(new BorderLayout());
-        rightPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        detailsArea = new JTextArea("\n\n\n\n      Please select a job from the left panel to view details.");
+        // ==========================================
+        // 2. RIGHT PANEL (CardLayout: Grid <-> Details)
+        // ==========================================
+        cardLayout = new CardLayout();
+        rightContainer = new JPanel(cardLayout);
+
+        // --- Card 1: Job Grid View ---
+        // 使用 2 列的网格布局，行数自适应，卡片之间有 15px 间距
+        gridPanel = new JPanel(new GridLayout(0, 2, 15, 15));
+        gridPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        JScrollPane gridScroll = new JScrollPane(gridPanel);
+        gridScroll.getVerticalScrollBar().setUnitIncrement(16);
+        gridScroll.setBorder(BorderFactory.createTitledBorder("Available Opportunities"));
+
+        // --- Card 2: Job Details View ---
+        JPanel detailPanel = new JPanel(new BorderLayout(10, 10));
+        detailPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        // Back Button (Top)
+        JPanel backPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JButton backBtn = new JButton("← Back to Jobs");
+        backBtn.setFont(new Font("Arial", Font.BOLD, 14));
+        backBtn.addActionListener(e -> cardLayout.show(rightContainer, "GRID_VIEW"));
+        backPanel.add(backBtn);
+
+        detailsArea = new JTextArea();
         detailsArea.setEditable(false);
         detailsArea.setFont(new Font("Arial", Font.PLAIN, 16));
         detailsArea.setLineWrap(true);
         detailsArea.setWrapStyleWord(true);
         detailsArea.setBackground(new Color(245, 245, 245));
 
+        // Apply Button (Bottom)
         applyBtn = new JButton("Apply Now");
         applyBtn.setFont(new Font("Arial", Font.BOLD, 24));
         applyBtn.setBackground(new Color(0, 153, 76));
         applyBtn.setForeground(Color.WHITE);
-        applyBtn.setEnabled(false);
         applyBtn.setPreferredSize(new Dimension(0, 65));
         applyBtn.setOpaque(true);
         applyBtn.setBorderPainted(false);
+        applyBtn.setFocusPainted(false);
 
-        JPanel bottomPanel = new JPanel(new BorderLayout());
-        bottomPanel.add(applyBtn, BorderLayout.CENTER);
+        detailPanel.add(backPanel, BorderLayout.NORTH);
+        detailPanel.add(new JScrollPane(detailsArea), BorderLayout.CENTER);
+        detailPanel.add(applyBtn, BorderLayout.SOUTH);
 
-        rightPanel.add(new JScrollPane(detailsArea), BorderLayout.CENTER);
-        rightPanel.add(bottomPanel, BorderLayout.SOUTH);
+        // Add both cards to the Right Container
+        rightContainer.add(gridScroll, "GRID_VIEW");
+        rightContainer.add(detailPanel, "DETAIL_VIEW");
 
-        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightPanel);
-        splitPane.setDividerLocation(320);
-        add(splitPane);
+        // Assemble the SplitPane
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightContainer);
+        splitPane.setDividerLocation(300);
+        splitPane.setEnabled(false); // 锁定分割线，保持布局整洁
+        add(splitPane, BorderLayout.CENTER);
 
-        // --- Event Binding ---
-        jobList.addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                Job selectedJob = jobList.getSelectedValue();
-                if (selectedJob != null) {
-                    refreshDetailsPanel(selectedJob);
-                }
-            }
-        });
 
+        // ==========================================
+        // 3. EVENT LISTENERS
+        // ==========================================
         searchBtn.addActionListener(e -> {
             String mod = (String) moduleCombo.getSelectedItem();
             String status = (String) statusCombo.getSelectedItem();
             String type = (String) jobTypeCombo.getSelectedItem();
             String skills = (String) skillsCombo.getSelectedItem();
             String kw = searchField.getText();
-            updateList(controller.filterJobs(mod, status, type, skills, kw));
+            updateJobCards(controller.filterJobs(mod, status, type, skills, kw));
         });
 
         clearBtn.addActionListener(e -> {
@@ -163,31 +206,127 @@ public class TADashboardUI extends DashBoardUI {
             jobTypeCombo.setSelectedIndex(0);
             skillsCombo.setSelectedIndex(0);
             searchField.setText("");
-            updateList(controller.getAllJobs());
+            updateJobCards(controller.getAllJobs());
         });
 
         applyBtn.addActionListener(e -> {
-            Job selectedJob = jobList.getSelectedValue();
-            if (selectedJob != null) {
-                // [Feature]: Pass currentUser.getId() to load specific user's CVs
-                ApplicationDialog dialog = new ApplicationDialog(this, controller, selectedJob, currentUser.getId());
+            if (currentSelectedJob != null) {
+                ApplicationDialog dialog = new ApplicationDialog(this, controller, currentSelectedJob, currentUser.getId());
                 dialog.setVisible(true);
             }
+            applyBtn.setOpaque(true);
+            applyBtn.setBorderPainted(false);
         });
-        // Event listener for the new "My Applications" button
+
         myAppsBtn.addActionListener(e -> {
             MyApplicationsDialog myAppsDialog = new MyApplicationsDialog(this, controller, currentUser.getId());
             myAppsDialog.setVisible(true);
         });
 
+        // 找到原有的 manageCVBtn.addActionListener(...) 并替换为：
         manageCVBtn.addActionListener(e -> {
-            // [Feature]: Pass currentUser.getId() to isolate user's CV management
-            CVManagerDialog cvDialog = new CVManagerDialog(this, controller, currentUser.getId());
-            cvDialog.setVisible(true);
+            // 跳转到新的个人档案界面
+            ProfileManagerDialog profileDialog = new ProfileManagerDialog(this, controller, currentUser.getId());
+            profileDialog.setVisible(true);
+        });
+
+        smartMatchBtn.addActionListener(e -> {
+            UserProfile p = controller.getUserProfile(currentUser.getId());
+            if (p == null || p.getName() == null || p.getName().isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                        "Please complete your 'My Profile' first so we can analyze your skills!",
+                        "Profile Required", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            List<Job> recommended = controller.getRecommendedJobs(currentUser.getId());
+            updateJobCards(recommended);
+
+            JOptionPane.showMessageDialog(this,
+                    "Jobs have been sorted based on your profile compatibility!",
+                    "Smart Match Complete", JOptionPane.INFORMATION_MESSAGE);
         });
     }
 
-    private void refreshDetailsPanel(Job job) {
+
+    /**
+     * Loads jobs and populates the grid view on startup.
+     */
+    private void loadInitialData() {
+        updateJobCards(controller.getAllJobs());
+    }
+
+    /**
+     * Rebuilds the right panel's grid layout with buttons representing each job.
+     */
+    private void updateJobCards(List<Job> jobs) {
+        gridPanel.removeAll();
+
+        if (jobs.isEmpty()) {
+            JPanel emptyPanel = new JPanel(new GridBagLayout());
+            emptyPanel.add(new JLabel("No jobs match your search criteria."));
+            gridPanel.add(emptyPanel);
+        } else {
+            for (Job job : jobs) {
+                gridPanel.add(createJobCard(job));
+            }
+        }
+
+        gridPanel.revalidate();
+        gridPanel.repaint();
+        cardLayout.show(rightContainer, "GRID_VIEW");
+    }
+
+    /**
+     * Creates a large, square-ish button to act as a Job Card.
+     */
+    private JButton createJobCard(Job job) {
+        // 使用 HTML 渲染卡片内部格式
+        String cardHtml = String.format(
+                "<html><div style='text-align:center; padding: 10px;'>" +
+                        "<h2 style='margin: 0 0 10px 0; color: %s;'>%s</h2>" +
+                        "<p style='margin: 3px 0; font-size: 11px;'><b>Module:</b> %s</p>" +
+                        "<p style='margin: 3px 0; font-size: 11px;'><b>Skills:</b> %s</p>" +
+                        "%s" +
+                        "</div></html>",
+                job.isExpired() ? "#888888" : "#0055cc",
+                job.getTitle(),
+                job.getModule(),
+                job.getRequiredSkill(),
+                job.isExpired() ? "<p style='color: red; font-weight: bold;'>[CLOSED]</p>" : ""
+        );
+
+        JButton jobBtn = new JButton(cardHtml);
+        jobBtn.setPreferredSize(new Dimension(200, 180)); // 大方块尺寸
+        jobBtn.setBackground(job.isExpired() ? new Color(240, 240, 240) : Color.WHITE);
+        jobBtn.setFocusPainted(false);
+        jobBtn.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(200, 200, 200), 1),
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)
+        ));
+
+        // 鼠标悬浮反馈 (Hover effect)
+        jobBtn.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                jobBtn.setBackground(new Color(230, 240, 255));
+                jobBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            }
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                jobBtn.setBackground(job.isExpired() ? new Color(240, 240, 240) : Color.WHITE);
+            }
+        });
+
+        // 点击事件：切换到详细信息面板
+        jobBtn.addActionListener(e -> showJobDetails(job));
+
+        return jobBtn;
+    }
+
+    /**
+     * Populates the details area and switches the right panel to the details view.
+     */
+    private void showJobDetails(Job job) {
+        this.currentSelectedJob = job;
+
         StringBuilder sb = new StringBuilder();
         sb.append("Job Title: \t").append(job.getTitle()).append("\n");
         sb.append("Module: \t").append(job.getModule()).append("\n");
@@ -210,20 +349,8 @@ public class TADashboardUI extends DashBoardUI {
             applyBtn.setEnabled(true);
             applyBtn.setBackground(new Color(0, 153, 76));
         }
-    }
 
-    private void loadInitialData() {
-        updateList(controller.getAllJobs());
-    }
-
-    private void updateList(List<Job> jobs) {
-        listModel.clear();
-        if (jobs.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "No matches found for the given criteria.", "Information", JOptionPane.INFORMATION_MESSAGE);
-        } else {
-            for (Job job : jobs) {
-                listModel.addElement(job);
-            }
-        }
+        // 切换卡片到详情视图
+        cardLayout.show(rightContainer, "DETAIL_VIEW");
     }
 }

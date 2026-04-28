@@ -32,6 +32,17 @@ public class TAController {
      * Default constructor. Initializes the data structures and populates the
      * system with mock job data for demonstration purposes.
      */
+    // 在 TAController 类中修改
+    private Map<String, UserProfile> userProfileMap = new HashMap<>();
+
+    public UserProfile getUserProfile(String userId) {
+        // 如果没有档案，返回一个空对象避免空指针
+        return userProfileMap.getOrDefault(userId, new UserProfile());
+    }
+
+    public void saveUserProfile(String userId, UserProfile profile) {
+        userProfileMap.put(userId, profile);
+    }
     public TAController() {
         allJobs = new ArrayList<>();
 
@@ -52,6 +63,7 @@ public class TAController {
         userCVsMap = new HashMap<>();
         userApplicationsMap = new HashMap<>();
     }
+
 
     // ==========================================
     // Core Job Retrieval and Filtering Logic
@@ -181,29 +193,21 @@ public class TAController {
         return userApplicationsMap.computeIfAbsent(userId, k -> new ArrayList<>());
     }
 
-    /**
-     * Core business logic to process and persist a new job application.
-     * Validates input, prevents duplicates, and records the transaction.
-     * * @param targetJob   The Job entity being applied to.
-     * @param userId      The unique ID of the user submitting the application.
-     * @param selectedCV  The specific CVRecord chosen for this application.
-     * @param coverLetter The submitted cover letter text (can be empty).
-     * @return boolean    True if the submission was successful, false otherwise.
-     */
-    public boolean submitApplication(Job targetJob, String userId, CVRecord selectedCV, String coverLetter) {
+
+    // 将方法签名中的 CVRecord selectedCV 改成 UserProfile selectedProfile
+    public boolean submitApplication(Job targetJob, String userId, UserProfile selectedProfile, String coverLetter) {
 
         // 1. Strict null-check validation
-        if (targetJob == null || userId == null || selectedCV == null) {
+        if (targetJob == null || userId == null || selectedProfile == null) {
             System.err.println("Validation Error: Missing critical application data.");
             return false;
         }
 
-        // 2. Prevent duplicate active applications for the exact same job
+        // 2. Prevent duplicate active applications
         List<ApplicationRecord> existingApps = getUserApplications(userId);
         for (ApplicationRecord app : existingApps) {
             if (app.getTargetJob().getId().equals(targetJob.getId())) {
                 String currentStatus = app.getStatus();
-                // If it's not Withdrawn or Rejected, it means it's active (Pending/Interviewing)
                 if (!currentStatus.equals("Withdrawn") && !currentStatus.equals("Rejected")) {
                     System.err.println("Duplicate Error: User already has an active application for this job.");
                     return false;
@@ -212,19 +216,14 @@ public class TAController {
         }
 
         try {
-            // 3. Instantiate the new application record entity
-            ApplicationRecord newRecord = new ApplicationRecord(targetJob, userId, selectedCV, coverLetter);
-
-            // 4. Persist the record into the user's isolated application list
+            // 3. 实例化时传入 selectedProfile
+            ApplicationRecord newRecord = new ApplicationRecord(targetJob, userId, selectedProfile, coverLetter);
             existingApps.add(newRecord);
 
-            // 5. System logging for debugging and audit trails
             System.out.println("=== Application Transaction Success ===");
             System.out.println("Generated App ID: " + newRecord.getApplicationId());
-            System.out.println("Applicant ID: " + userId);
+            System.out.println("Applicant Name: " + selectedProfile.getName()); // 打印档案里的名字
             System.out.println("Target Position: " + targetJob.getTitle());
-            System.out.println("Selected CV: " + selectedCV.getOriginalName());
-            System.out.println("Timestamp: " + newRecord.getFormattedSubmissionDate());
             System.out.println("=======================================");
 
             return true;
@@ -277,5 +276,97 @@ public class TAController {
             e.printStackTrace();
             return false;
         }
+    }
+    //smart match
+    /**
+     * Nested inner class to hold a Job and its calculated compatibility score.
+     * Implements Comparable to allow easy sorting by score in descending order.
+     */
+    private static class JobScore implements Comparable<JobScore> {
+        Job job;
+        int score;
+
+        public JobScore(Job job, int score) {
+            this.job = job;
+            this.score = score;
+        }
+
+        @Override
+        public int compareTo(JobScore other) {
+            // Descending order: highest score first
+            return Integer.compare(other.score, this.score);
+        }
+    }
+
+    /**
+     * Core Algorithm: Calculates and sorts all available jobs based on the user's profile.
+     * Uses a weighted scoring system based on core skills, other skills, and experience keywords.
+     * * @param userId The ID of the current user.
+     * @return A sorted List of Jobs from most recommended to least recommended.
+     */
+    public List<Job> getRecommendedJobs(String userId) {
+        UserProfile profile = getUserProfile(userId);
+
+        // Defensive check: If profile is empty, just return the default list
+        if (profile == null || profile.getName() == null) {
+            System.err.println("Smart Match: No profile found, returning default list.");
+            return new ArrayList<>(allJobs);
+        }
+
+        List<JobScore> scoredJobs = new ArrayList<>();
+
+        for (Job job : allJobs) {
+            int currentScore = calculateMatchScore(job, profile);
+            scoredJobs.add(new JobScore(job, currentScore));
+        }
+
+        // Sort the list based on the compareTo method (descending score)
+        java.util.Collections.sort(scoredJobs);
+
+        // Extract the sorted Job objects back into a standard list
+        List<Job> recommendedList = new ArrayList<>();
+        for (JobScore js : scoredJobs) {
+            System.out.println("Match Score for [" + js.job.getTitle() + "]: " + js.score); // Console log for debugging
+            recommendedList.add(js.job);
+        }
+
+        return recommendedList;
+    }
+
+    /**
+     * Helper method to compute the weighted score for a single job against a profile.
+     */
+    private int calculateMatchScore(Job job, UserProfile profile) {
+        int score = 0;
+        String requiredSkill = job.getRequiredSkill().toLowerCase();
+
+        // 1. Core Skills Match (Weight: +50)
+        if (profile.getSelectedSkills() != null) {
+            for (String userSkill : profile.getSelectedSkills()) {
+                if (userSkill.toLowerCase().contains(requiredSkill) || requiredSkill.contains(userSkill.toLowerCase())) {
+                    score += 50;
+                    break; // Max 50 points from core skills to prevent score inflation
+                }
+            }
+        }
+
+        // 2. Other Skills Match (Weight: +30)
+        String otherSkills = profile.getOtherSkills();
+        if (otherSkills != null && otherSkills.toLowerCase().contains(requiredSkill)) {
+            score += 30;
+        }
+
+        // 3. Experience Keyword Match (Weight: +20)
+        String experience = profile.getExperience();
+        if (experience != null && experience.toLowerCase().contains(requiredSkill)) {
+            score += 20;
+        }
+
+        // 4. Status Penalty: Deprioritize closed jobs (Penalty: -100)
+        if (job.isExpired()) {
+            score -= 100;
+        }
+
+        return score;
     }
 }
