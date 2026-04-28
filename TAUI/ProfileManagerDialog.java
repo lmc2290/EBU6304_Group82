@@ -3,7 +3,6 @@ package TAUI;
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class ProfileManagerDialog extends JDialog {
@@ -14,6 +13,9 @@ public class ProfileManagerDialog extends JDialog {
     private JTextField nameField, collegeField, otherSkillsField;
     private JComboBox<String> genderCombo, gradeCombo;
     private JTextArea expArea;
+
+    // [新增] 用于填写求职信模板的文本域
+    private JTextArea coverLetterArea;
 
     // 技能复选框列表
     private List<JCheckBox> skillCheckBoxes;
@@ -85,15 +87,33 @@ public class ProfileManagerDialog extends JDialog {
         expPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         expArea = new JTextArea(profile.getExperience());
         expArea.setLineWrap(true);
+        expArea.setWrapStyleWord(true);
         expPanel.add(new JLabel("Relevant Experience:"), BorderLayout.NORTH);
         expPanel.add(new JScrollPane(expArea), BorderLayout.CENTER);
+
+        // ==========================================
+        // --- Tab 4: Cover Letter Template ---
+        // ==========================================
+        JPanel clPanel = new JPanel(new BorderLayout(10, 10));
+        clPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+
+        String existingTemplate = profile.getCoverLetterTemplate() != null ? profile.getCoverLetterTemplate() : "";
+        coverLetterArea = new JTextArea(existingTemplate);
+        coverLetterArea.setLineWrap(true);
+        coverLetterArea.setWrapStyleWord(true);
+
+        clPanel.add(new JLabel("Default Cover Letter Template (Max 1000 chars):"), BorderLayout.NORTH);
+        clPanel.add(new JScrollPane(coverLetterArea), BorderLayout.CENTER);
 
         tabbedPane.addTab("Basic Info", baseInfoPanel);
         tabbedPane.addTab("Skills", skillTab);
         tabbedPane.addTab("Experience", expPanel);
+        tabbedPane.addTab("Cover Letter", clPanel);
 
         add(tabbedPane, BorderLayout.CENTER);
 
+        // save button
         JButton saveBtn = new JButton("Save Profile");
         saveBtn.setPreferredSize(new Dimension(0, 50));
         saveBtn.setFont(new Font("Arial", Font.BOLD, 14));
@@ -106,17 +126,23 @@ public class ProfileManagerDialog extends JDialog {
     }
 
     private void handleSave() {
+        // basic information validation
         if (nameField.getText().trim().isEmpty()) {
             JOptionPane.showMessageDialog(this, "Name cannot be empty!", "Validation Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
+        // length limitation
+        String clText = coverLetterArea.getText();
+        if (clText.length() > 1000) {
+            JOptionPane.showMessageDialog(this, "Cover letter template is too long (Max 1000 characters).", "Validation Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         profile.setName(nameField.getText());
         profile.setGender((String) genderCombo.getSelectedItem());
         profile.setGrade((String) gradeCombo.getSelectedItem());
         profile.setCollege(collegeField.getText());
 
-        // 保存勾选的技能
         List<String> selected = new ArrayList<>();
         for (JCheckBox cb : skillCheckBoxes) {
             if (cb.isSelected()) selected.add(cb.getText());
@@ -125,8 +151,11 @@ public class ProfileManagerDialog extends JDialog {
         profile.setOtherSkills(otherSkillsField.getText());
         profile.setExperience(expArea.getText());
 
+        // save cover letter
+        profile.setCoverLetterTemplate(clText);
+
         controller.saveUserProfile(userId, profile);
-        JOptionPane.showMessageDialog(this, "Profile updated successfully!");
+        JOptionPane.showMessageDialog(this, "Profile and templates updated successfully!");
         dispose();
     }
 }
