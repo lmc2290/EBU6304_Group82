@@ -10,10 +10,13 @@ public class UserProfile implements Serializable {
     private String grade;
     private String college;
 
-    // 改为存储选择的技能列表和补充技能
     private List<String> selectedSkills = new ArrayList<>();
     private String otherSkills = "";
     private String experience = "";
+    private String coverLetterTemplate = "";
+
+    public String getCoverLetterTemplate() { return coverLetterTemplate; }
+    public void setCoverLetterTemplate(String template) { this.coverLetterTemplate = template; }
 
     public UserProfile() {}
 
