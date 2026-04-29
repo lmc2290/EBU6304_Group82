@@ -194,16 +194,12 @@ public class TAController {
     }
 
 
-    // 将方法签名中的 CVRecord selectedCV 改成 UserProfile selectedProfile
     public boolean submitApplication(Job targetJob, String userId, UserProfile selectedProfile, String coverLetter) {
-
-        // 1. Strict null-check validation
         if (targetJob == null || userId == null || selectedProfile == null) {
             System.err.println("Validation Error: Missing critical application data.");
             return false;
         }
 
-        // 2. Prevent duplicate active applications
         List<ApplicationRecord> existingApps = getUserApplications(userId);
         for (ApplicationRecord app : existingApps) {
             if (app.getTargetJob().getId().equals(targetJob.getId())) {
@@ -216,16 +212,46 @@ public class TAController {
         }
 
         try {
-            // 3. 实例化时传入 selectedProfile
             ApplicationRecord newRecord = new ApplicationRecord(targetJob, userId, selectedProfile, coverLetter);
-            existingApps.add(newRecord);
+            existingApps.add(newRecord); // 存入 TA 自己的内存中
+
+            // =========================================================
+            // 🚀 [CROSS-TEAM INTEGRATION]: 将数据写入 MO 组的 CSV 数据库
+            // =========================================================
+            try {
+                // 1. 读取 MO 组现有的 CSV 数据
+                List<LoginPage.Applicant> moApplicants = LoginPage.MODataStore.loadApplicants();
+
+                // 2. 将 TA 的 UserProfile 转换成 MO 认识的 Applicant 格式
+                String skillsStr = selectedProfile.getSelectedSkills() != null ? String.join(";", selectedProfile.getSelectedSkills()) : "N/A";
+
+                LoginPage.Applicant moFormatApplicant = new LoginPage.Applicant(
+                        userId,
+                        selectedProfile.getName(),
+                        targetJob.getModule(),
+                        selectedProfile.getCollege(),
+                        "Not Specified",
+                        skillsStr,
+                        "Online Profile",
+                        "Pending"
+                );
+
+                // 3. 追加并保存回 MO 的 CSV 文件
+                moApplicants.add(moFormatApplicant);
+                LoginPage.MODataStore.saveApplicants(moApplicants);
+                System.out.println("[Data Bridge] Successfully pushed data to MO CSV DataStore.");
+
+            } catch (Exception ex) {
+                System.err.println("[Data Bridge] Failed to connect to MO DataStore: " + ex.getMessage());
+            }
+
+            // =========================================================
+            // 📧 [US-08 FEATURE]: 发送模拟邮件给 MO
+            // =========================================================
+            EmailService.sendEmail(targetJob.getModule(), selectedProfile.getName(), targetJob.getTitle());
 
             System.out.println("=== Application Transaction Success ===");
             System.out.println("Generated App ID: " + newRecord.getApplicationId());
-            System.out.println("Applicant Name: " + selectedProfile.getName()); // 打印档案里的名字
-            System.out.println("Target Position: " + targetJob.getTitle());
-            System.out.println("=======================================");
-
             return true;
 
         } catch (Exception e) {
