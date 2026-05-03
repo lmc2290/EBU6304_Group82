@@ -68,7 +68,9 @@ public class ApplicationRecord {
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         return formatter.format(this.submissionDate);
     }
-
+    // [DataStore 需要用到]：用于从 TXT 文件中恢复原始申请 ID 和时间
+    public void setApplicationId(String applicationId) { this.applicationId = applicationId; }
+    public void setSubmissionDate(Date submissionDate) { this.submissionDate = submissionDate; }
     @Override
     public String toString() {
         return "[" + status + "] " + (targetJob != null ? targetJob.getTitle() : "Unknown Job");
