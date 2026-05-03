@@ -106,12 +106,31 @@ public class ProfileManagerDialog extends JDialog {
     }
 
     private void handleSave() {
-        if (nameField.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Name cannot be empty!", "Validation Error", JOptionPane.ERROR_MESSAGE);
+        // ==========================================
+        // 🛡️ Data Validation & Security Checks
+        // ==========================================
+        String inputName = nameField.getText().trim();
+        String expText = expArea.getText();
+        String otherSkillsText = otherSkillsField.getText();
+
+        // 1. Regex Name Validation
+        if (!DataValidator.isValidName(inputName)) {
+            JOptionPane.showMessageDialog(this,
+                    "Invalid Name!\nPlease use only English letters and spaces (2-50 characters).",
+                    "Validation Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        profile.setName(nameField.getText());
+        // 2. Anti-Injection Security Check (防止恶意的经验和技能文本注入)
+        if (DataValidator.containsMaliciousCharacters(expText) || DataValidator.containsMaliciousCharacters(otherSkillsText)) {
+            JOptionPane.showMessageDialog(this,
+                    "Security Alert: Potential malicious script or SQL keywords detected in your text!",
+                    "Security Warning", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        // ==========================================
+
+        profile.setName(inputName);
         profile.setGender((String) genderCombo.getSelectedItem());
         profile.setGrade((String) gradeCombo.getSelectedItem());
         profile.setCollege(collegeField.getText());
@@ -122,8 +141,8 @@ public class ProfileManagerDialog extends JDialog {
             if (cb.isSelected()) selected.add(cb.getText());
         }
         profile.setSelectedSkills(selected);
-        profile.setOtherSkills(otherSkillsField.getText());
-        profile.setExperience(expArea.getText());
+        profile.setOtherSkills(otherSkillsText);
+        profile.setExperience(expText);
 
         controller.saveUserProfile(userId, profile);
         JOptionPane.showMessageDialog(this, "Profile updated successfully!");
