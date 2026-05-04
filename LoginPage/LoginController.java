@@ -3,6 +3,7 @@ package LoginPage;
 import javax.swing.*;
 import AdminPage.AdminDashboardUI;
 import TAUI.TADashboardUI;
+import TAUI.TAController;
 /**
  * Control Class
  * Encapsulates the coordination and authentication logic.
@@ -83,9 +84,6 @@ public class LoginController {
         }
     }
 
-    /**
-     * Creates the appropriate dashboard based on user role
-     */
     private DashBoardUI createDashboardForUser(User user) {
         switch (user.getRole()) {
             case "Admin":
@@ -93,7 +91,9 @@ public class LoginController {
             case "MO":
                 return new MODashboardUI(user);
             case "TA":
-                return new TADashboardUI(user);
+                // 👇 确保这里是这两行代码！
+                TAController taController = new TAController();
+                return new TADashboardUI(user, taController);
             default:
                 loginUI.showError("Unknown role detected.");
                 return null;
