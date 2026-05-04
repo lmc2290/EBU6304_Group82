@@ -42,11 +42,14 @@ public class TAController {
 
     public void saveUserProfile(String userId, UserProfile profile) {
         userProfileMap.put(userId, profile);
+        // [核心修改]：每次修改档案后，立即保存到 TXT
+        TADataStore.saveProfiles(userProfileMap);
+        System.out.println("[System] Profile data saved to ta_profiles.txt.");
     }
     public TAController() {
         allJobs = new ArrayList<>();
 
-        // Mock Data: Initializing Job Postings
+        // 初始化岗位数据 (Mock Database)
         allJobs.add(new Job("J01", "Java Lab Assistant", "ECS401", "10 hours/week", "£15/hr", "1:5",
                 "Assist students with Java lab exercises and mark weekly assignments.", false,
                 "Lab Assistant", "Java"));
@@ -56,12 +59,13 @@ public class TAController {
                 "Tutor", "Python"));
 
         allJobs.add(new Job("J03", "Signal Processing Grader", "ECS505", "15 hours/week", "£14/hr", "1:10",
-                "Grade MATLAB scripts for communication systems and signal processing assignments. (Deadline Passed)", true,
+                "Grade MATLAB scripts for communication systems and signal processing assignments.", true,
                 "Grader", "MATLAB"));
 
-        // Initialize the Maps for user data isolation
-        userCVsMap = new HashMap<>();
-        userApplicationsMap = new HashMap<>();
+        // [核心修改]：程序启动时，从本地 TXT 文件加载数据！
+        userProfileMap = TADataStore.loadProfiles();
+        userApplicationsMap = TADataStore.loadApplications(allJobs, userProfileMap);
+        System.out.println("[System] Data successfully loaded from local text files.");
     }
 
 
@@ -255,6 +259,7 @@ public class TAController {
         try {
             ApplicationRecord newRecord = new ApplicationRecord(targetJob, userId, selectedProfile, coverLetter);
             existingApps.add(newRecord); // 存入 TA 自己的内存中
+            TADataStore.saveApplications(userApplicationsMap);
 
             // =========================================================
             // 🚀 [CROSS-TEAM INTEGRATION]: 将数据写入 MO 组的 CSV 数据库
@@ -330,6 +335,7 @@ public class TAController {
         try {
             // 3. Execute State Change (US-07 AC3)
             record.setStatus("Withdrawn");
+            TADataStore.saveApplications(userApplicationsMap);
 
             // Log transaction for audit purposes
             System.out.println("=== Application Withdrawn ===");

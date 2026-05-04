@@ -68,7 +68,7 @@ public class MODashboardUI extends DashBoardUI {
         outerPanel.setBackground(PAGE_BG);
         outerPanel.setBorder(BorderFactory.createEmptyBorder(10, 40, 40, 40));
 
-        JPanel gridPanel = new JPanel(new GridLayout(2, 2, 24, 24));
+        JPanel gridPanel = new JPanel(new GridLayout(2, 3, 24, 24));
         gridPanel.setBackground(PAGE_BG);
 
         gridPanel.add(createFeatureCard(
@@ -96,12 +96,14 @@ public class MODashboardUI extends DashBoardUI {
                 "Schedule Interviews",
                 "Manage interview arrangements for selected applicants",
                 "SI",
-                () -> JOptionPane.showMessageDialog(
-                        this,
-                        "Interview scheduling will be added later.",
-                        "Coming Soon",
-                        JOptionPane.INFORMATION_MESSAGE
-                )
+                () -> openPanelInFrame("Schedule Interviews", new MOScheduleInterviewsUI(currentUser))
+        ));
+
+        gridPanel.add(createFeatureCard(
+                "Message TA",
+                "Send messages to teaching assistants",
+                "MT",
+                () -> openPanelInFrame("Message TA", new MOMessageTAUI(currentUser))
         ));
 
         GridBagConstraints gbc = new GridBagConstraints();
@@ -214,13 +216,22 @@ public class MODashboardUI extends DashBoardUI {
     }
 
     // 优化 3：改为模态 JDialog，防止用户手抖连续点击弹出多个相同窗口
-    private void openPanelInFrame(String title, JPanel panel) {
-        Window parentWindow = SwingUtilities.getWindowAncestor(this);
-        JDialog dialog = new JDialog(parentWindow, title, Dialog.ModalityType.APPLICATION_MODAL);
-        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-        dialog.setContentPane(panel);
-        dialog.setSize(1100, 650);
-        dialog.setLocationRelativeTo(this);
-        dialog.setVisible(true);
+    private void openPanelInFrame(String title, Object panel) {
+        if (panel instanceof JPanel) {
+            Window parentWindow = SwingUtilities.getWindowAncestor(this);
+            JDialog dialog = new JDialog(parentWindow, title, Dialog.ModalityType.APPLICATION_MODAL);
+            dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+            dialog.setContentPane((JPanel) panel);
+            dialog.setSize(1100, 650);
+            dialog.setLocationRelativeTo(this);
+            dialog.setVisible(true);
+        } else if (panel instanceof JFrame) {
+            JFrame frame = (JFrame) panel;
+            frame.setTitle(title);
+            frame.setSize(800, 600);
+            frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+            frame.setLocationRelativeTo(this);
+            frame.setVisible(true);
+        }
     }
 }
