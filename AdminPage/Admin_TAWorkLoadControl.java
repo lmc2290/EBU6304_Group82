@@ -12,6 +12,7 @@ public class Admin_TAWorkLoadControl {
     public int currentLimit = 3;
     public int warningHourLimit = 20; 
 
+    // 配置保存路径
     private final File configFile = new File("data/limit_config.txt");
     private final File hourConfigFile = new File("data/hour_limit_config.txt");
     private final File applicantsFile = new File("data/applicants.csv"); 
@@ -26,6 +27,9 @@ public class Admin_TAWorkLoadControl {
         this.boundary = new Admin_TAWorkLoadControlUI(this);
     }
 
+    // ==========================================
+    // 配置读写逻辑
+    // ==========================================
     public void loadLimitFromFile() {
         if (!configFile.exists()) return;
         try (BufferedReader br = new BufferedReader(new FileReader(configFile))) {
@@ -64,6 +68,9 @@ public class Admin_TAWorkLoadControl {
         }
     }
 
+    // ==========================================
+    // 核心数据提供：完全解耦，只返回数据列表
+    // ==========================================
     public List<Object[]> getRealTAWorkloadData() {
         List<Object[]> workloadData = new ArrayList<>();
         if (!applicantsFile.exists()) return workloadData;
@@ -73,7 +80,7 @@ public class Admin_TAWorkLoadControl {
 
         try (BufferedReader br = new BufferedReader(new FileReader(applicantsFile))) {
             String line;
-            br.readLine(); 
+            br.readLine(); // 跳过 Header
             while ((line = br.readLine()) != null) {
                 if (line.isBlank()) continue;
                 String[] parts = line.split(",");
@@ -85,6 +92,7 @@ public class Admin_TAWorkLoadControl {
                     taNames.put(taId, name);
                     taApprovedCount.putIfAbsent(taId, 0);
 
+                    // 只有 Approved 的才计算工作量
                     if (status.equalsIgnoreCase("Approved")) {
                         taApprovedCount.put(taId, taApprovedCount.get(taId) + 1);
                     }
@@ -103,6 +111,10 @@ public class Admin_TAWorkLoadControl {
         return workloadData;
     }
 
+    // ==========================================
+    // 数据清理与移除逻辑
+    // ==========================================
+    
     // 清理废弃数据 (Rejected / Withdrawn)
     public int cleanUpInvalidData() {
         if (!applicantsFile.exists()) return 0;
@@ -112,9 +124,7 @@ public class Admin_TAWorkLoadControl {
         });
     }
 
-    // ==========================================
-    // 【新功能】按 ID 精准开除/清理毕业的 TA
-    // ==========================================
+    // 按 ID 精准开除/清理毕业的 TA
     public int purgeTAById(String targetTaId) {
         if (!applicantsFile.exists() || targetTaId == null || targetTaId.isBlank()) return 0;
         return filterCSVData(parts -> parts[0].trim().equalsIgnoreCase(targetTaId.trim()));
@@ -152,6 +162,9 @@ public class Admin_TAWorkLoadControl {
         return removedCount;
     }
 
+    // ==========================================
+    // UI 交互方法
+    // ==========================================
     public void updateLimit(String input) {
         try {
             currentLimit = Integer.parseInt(input.trim());

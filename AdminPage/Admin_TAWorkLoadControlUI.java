@@ -139,7 +139,7 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         settingsPanel.add(currentLimitLabel);
         settingsPanel.add(limitField);
         settingsPanel.add(setBtn);
-        settingsPanel.add(Box.createHorizontalStrut(30)); // 增加左右两组配置的间距
+        settingsPanel.add(Box.createHorizontalStrut(30)); 
         settingsPanel.add(hourLimitLabel);
         settingsPanel.add(hourField);
         settingsPanel.add(setHourBtn);
@@ -192,7 +192,7 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
 
         // 将两层加入底部面板
         bottomPanel.add(settingsPanel);
-        bottomPanel.add(Box.createVerticalStrut(5)); // 上下间距
+        bottomPanel.add(Box.createVerticalStrut(5)); 
         bottomPanel.add(actionPanel);
         
         add(bottomPanel, BorderLayout.SOUTH);
@@ -279,12 +279,12 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
         taTable.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                // 监听鼠标左键单击 (Click count == 1)
+                // 监听鼠标左键单击
                 if (e.getButton() == MouseEvent.BUTTON1 && e.getClickCount() == 1) { 
                     int row = taTable.rowAtPoint(e.getPoint());
                     int col = taTable.columnAtPoint(e.getPoint());
                     
-                    if (col == 4 && row >= 0) { // 如果精准点击了第4列（邮箱列）
+                    if (col == 4 && row >= 0) { 
                         int modelRow = taTable.convertRowIndexToModel(row);
                         String email = tableModel.getValueAt(modelRow, 4).toString();
                         
@@ -293,7 +293,7 @@ public class Admin_TAWorkLoadControlUI extends JPanel {
                         Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
                         clipboard.setContents(selection, null);
                         
-                        // 弹出一个不干扰的快速提示
+                        // 快速提示
                         JOptionPane.showMessageDialog(Admin_TAWorkLoadControlUI.this, 
                             "📋 Email copied to clipboard:\n" + email, 
                             "Copied!", 
