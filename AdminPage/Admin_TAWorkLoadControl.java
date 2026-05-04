@@ -1,33 +1,29 @@
 package AdminPage;
 
 import LoginPage.User;
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
 import java.io.*;
-import java.nio.charset.StandardCharsets;
+import java.util.*;
+import javax.swing.*;
 
 public class Admin_TAWorkLoadControl {
     private final User currentUser;
     private final Admin_TAWorkLoadControlUI boundary;
 
     public int currentLimit = 3;
-    public int warningHourLimit = 5;
+    public int warningHourLimit = 20; 
 
     private final File configFile = new File("data/limit_config.txt");
     private final File hourConfigFile = new File("data/hour_limit_config.txt");
-    private final File taDataFile = new File("data/ta_workload_data.csv");
+    private final File applicantsFile = new File("data/applicants.csv"); 
 
     public Admin_TAWorkLoadControl(User user) {
         this.currentUser = user;
-        this.boundary = new Admin_TAWorkLoadControlUI(this);
-
+        
         configFile.getParentFile().mkdirs();
-
         loadLimitFromFile();
         loadHourLimitFromFile();
-        loadTADataFromFile();
-
-        boundary.refreshLimitLabels();
+        
+        this.boundary = new Admin_TAWorkLoadControlUI(this);
     }
 
     public void loadLimitFromFile() {
@@ -54,7 +50,7 @@ public class Admin_TAWorkLoadControl {
         try (BufferedReader br = new BufferedReader(new FileReader(hourConfigFile))) {
             String line = br.readLine();
             if (line != null) warningHourLimit = Integer.parseInt(line.trim());
-        } catch (Exception e) { warningHourLimit = 5; }
+        } catch (Exception e) { warningHourLimit = 20; }
     }
 
     public void saveHourLimitToFile() {
@@ -68,38 +64,98 @@ public class Admin_TAWorkLoadControl {
         }
     }
 
-    public void loadTADataFromFile() {
-        boundary.getTableModel().setRowCount(0);
-        if (!taDataFile.exists()) {
-            saveInitialTAData();
-            return;
-        }
-        try (BufferedReader br = new BufferedReader(new FileReader(taDataFile))) {
+    public List<Object[]> getRealTAWorkloadData() {
+        List<Object[]> workloadData = new ArrayList<>();
+        if (!applicantsFile.exists()) return workloadData;
+
+        Map<String, String> taNames = new HashMap<>();
+        Map<String, Integer> taApprovedCount = new HashMap<>();
+
+        try (BufferedReader br = new BufferedReader(new FileReader(applicantsFile))) {
             String line;
+            br.readLine(); 
             while ((line = br.readLine()) != null) {
                 if (line.isBlank()) continue;
                 String[] parts = line.split(",");
-                if (parts.length >= 5) boundary.getTableModel().addRow(parts);
+                if (parts.length >= 8) {
+                    String taId = parts[0].trim();
+                    String name = parts[1].trim();
+                    String status = parts[7].trim(); 
+
+                    taNames.put(taId, name);
+                    taApprovedCount.putIfAbsent(taId, 0);
+
+                    if (status.equalsIgnoreCase("Approved")) {
+                        taApprovedCount.put(taId, taApprovedCount.get(taId) + 1);
+                    }
+                }
             }
         } catch (Exception e) { e.printStackTrace(); }
+
+        for (String taId : taNames.keySet()) {
+            String name = taNames.get(taId);
+            int enrolledCourses = taApprovedCount.get(taId);
+            int estimatedHours = enrolledCourses * 10; 
+            String email = name.toLowerCase().replace(" ", ".") + "_" + taId.toLowerCase() + "@qmul.ac.uk";
+
+            workloadData.add(new Object[]{taId, name, String.valueOf(enrolledCourses), String.valueOf(estimatedHours), email});
+        }
+        return workloadData;
     }
 
-    public void saveInitialTAData() {
-        try (PrintWriter pw = new PrintWriter(new FileWriter(taDataFile))) {
-            pw.println("ID-901,Alice Johnson,3,5,alice.j@uni.edu");
-            pw.println("ID-722,Bob Smith,2,2,bob@uni.edu");
-            pw.println("ID-553,Charlie Brown,1,4,charlie@uni.edu");
-            pw.println("ID-104,David Wilson,2,1,d.wilson@uni.edu");
-            loadTADataFromFile();
+    // 清理废弃数据 (Rejected / Withdrawn)
+    public int cleanUpInvalidData() {
+        if (!applicantsFile.exists()) return 0;
+        return filterCSVData(parts -> {
+            String status = parts[7];
+            return status.equalsIgnoreCase("Rejected") || status.equalsIgnoreCase("Withdrawn");
+        });
+    }
+
+    // ==========================================
+    // 【新功能】按 ID 精准开除/清理毕业的 TA
+    // ==========================================
+    public int purgeTAById(String targetTaId) {
+        if (!applicantsFile.exists() || targetTaId == null || targetTaId.isBlank()) return 0;
+        return filterCSVData(parts -> parts[0].trim().equalsIgnoreCase(targetTaId.trim()));
+    }
+
+    // 内部通用方法：根据条件过滤 CSV 并覆写，返回删除的行数
+    private int filterCSVData(java.util.function.Predicate<String[]> deleteCondition) {
+        List<String> validLines = new ArrayList<>();
+        int removedCount = 0;
+
+        try (BufferedReader br = new BufferedReader(new FileReader(applicantsFile))) {
+            String header = br.readLine();
+            if (header != null) validLines.add(header);
+
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] parts = line.split(",");
+                if (parts.length >= 8) {
+                    if (deleteCondition.test(parts)) {
+                        removedCount++;
+                        continue;
+                    }
+                }
+                validLines.add(line);
+            }
         } catch (Exception e) { e.printStackTrace(); }
+
+        if (removedCount > 0) {
+            try (PrintWriter pw = new PrintWriter(new FileWriter(applicantsFile))) {
+                for (String validLine : validLines) {
+                    pw.println(validLine);
+                }
+            } catch (Exception e) { e.printStackTrace(); }
+        }
+        return removedCount;
     }
 
     public void updateLimit(String input) {
         try {
             currentLimit = Integer.parseInt(input.trim());
             saveLimitToFile();
-            boundary.refreshLimitLabels();
-            boundary.getTaTable().repaint();
         } catch (Exception e) {
             JOptionPane.showMessageDialog(boundary, "Please enter a valid number.");
         }
@@ -109,52 +165,9 @@ public class Admin_TAWorkLoadControl {
         try {
             warningHourLimit = Integer.parseInt(input.trim());
             saveHourLimitToFile();
-            boundary.refreshLimitLabels();
-            boundary.getTaTable().repaint();
         } catch (Exception e) {
             JOptionPane.showMessageDialog(boundary, "Please enter a valid number.");
         }
-    }
-
-    public void exportDataToCSV() {
-        JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setSelectedFile(new File("TA_Workload.csv"));
-        int result = fileChooser.showSaveDialog(boundary);
-        if (result != JFileChooser.APPROVE_OPTION) return;
-
-        File file = fileChooser.getSelectedFile();
-        if (!file.getName().endsWith(".csv"))
-            file = new File(file.getParent(), file.getName() + ".csv");
-
-        try (BufferedWriter w = new BufferedWriter(
-                new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8))) {
-
-            DefaultTableModel m = boundary.getTableModel();
-            for (int i = 0; i < m.getColumnCount(); i++) {
-                w.write(escape(m.getColumnName(i)));
-                if (i < m.getColumnCount()-1) w.write(",");
-            }
-            w.newLine();
-
-            for (int i = 0; i < m.getRowCount(); i++) {
-                for (int j = 0; j < m.getColumnCount(); j++) {
-                    Object v = m.getValueAt(i, j);
-                    w.write(escape(v == null ? "" : v.toString()));
-                    if (j < m.getColumnCount()-1) w.write(",");
-                }
-                w.newLine();
-            }
-            JOptionPane.showMessageDialog(boundary, "Export success!");
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(boundary, "Export failed: "+e.getMessage());
-        }
-    }
-
-    private String escape(String s) {
-        if (s.startsWith("=")||s.startsWith("+")||s.startsWith("-")||s.startsWith("@")) s = "'"+s;
-        if (s.contains(",")||s.contains("\"")||s.contains("\n"))
-            s = "\"" + s.replace("\"","\"\"") + "\"";
-        return s;
     }
 
     public Admin_TAWorkLoadControlUI getUi() {
