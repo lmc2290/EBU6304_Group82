@@ -129,6 +129,13 @@ public class ProfileManagerDialog extends JDialog {
         // ==========================================
         // 🛡️ Data Validation & Security Checks
         // ==========================================
+        String clText = coverLetterArea.getText();
+
+        // [修复]：把之前不小心删掉的长度校验加回来
+        if (clText.length() > 1000) {
+            JOptionPane.showMessageDialog(this, "Cover letter template is too long (Max 1000 characters).", "Validation Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         String inputName = nameField.getText().trim();
         String expText = expArea.getText();
         String otherSkillsText = otherSkillsField.getText();
