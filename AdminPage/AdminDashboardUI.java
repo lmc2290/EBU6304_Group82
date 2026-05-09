@@ -12,7 +12,6 @@ public class AdminDashboardUI extends DashBoardUI {
 
     private Admin_TAWorkLoadControl taControl;
     private Admin_CourseApplicationControl courseControl;
-    private Admin_MessageControl messageControl;
 
     public AdminDashboardUI(User user) {
         super(user);
@@ -32,12 +31,8 @@ public class AdminDashboardUI extends DashBoardUI {
         courseControl = new Admin_CourseApplicationControl(currentUser);
         Admin_CourseApplicationControlUI coursePanel = courseControl.getUi();
 
-        messageControl = new Admin_MessageControl();
-        Admin_MessageUI messagePanel = messageControl.getUi();
-
         cardPanel.add(taPanel, "WORKLOAD");
         cardPanel.add(coursePanel, "REQUEST");
-        cardPanel.add(messagePanel, "MESSAGE");
 
         add(cardPanel, BorderLayout.CENTER);
 
@@ -47,15 +42,8 @@ public class AdminDashboardUI extends DashBoardUI {
         JButton workloadBtn = createNavBtn("Workload Dashboard", new Color(41, 128, 185));
         JButton requestBtn = createNavBtn("Approve Requests", new Color(41, 128, 185));
 
-        JButton mailboxBtn = new JButton();
-        mailboxBtn.setIcon(UIManager.getIcon("OptionPane.informationIcon"));
-        mailboxBtn.setPreferredSize(new Dimension(60, 45));
-        mailboxBtn.setBackground(Color.WHITE);
-        mailboxBtn.setFocusPainted(false);
-
         bottomNav.add(workloadBtn);
         bottomNav.add(requestBtn);
-        bottomNav.add(mailboxBtn);
 
         add(bottomNav, BorderLayout.SOUTH);
 
@@ -68,10 +56,6 @@ public class AdminDashboardUI extends DashBoardUI {
         requestBtn.addActionListener(e -> {
             cardLayout.show(cardPanel, "REQUEST");
             courseControl.loadData();
-        });
-
-        mailboxBtn.addActionListener(e -> {
-            cardLayout.show(cardPanel, "MESSAGE");
         });
     }
 
