@@ -1,7 +1,10 @@
 package LoginPage;
 
-import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import javax.swing.border.Border;
+import javax.swing.*;
 
 public class MODashboardUI extends DashBoardUI {
 
@@ -12,6 +15,11 @@ public class MODashboardUI extends DashBoardUI {
     private static final Color TITLE_COLOR = new Color(33, 37, 41);
     private static final Color SUBTITLE_COLOR = new Color(108, 117, 125);
     private static final Color ICON_BG = new Color(0, 123, 255);
+
+    // 优化 2：提取字体常量，避免重复创建 Font 对象消耗内存
+    private static final Font TITLE_FONT = new Font("Arial", Font.BOLD, 22);
+    private static final Font DESC_FONT = new Font("Arial", Font.PLAIN, 14);
+    private static final Font BADGE_FONT = new Font("Arial", Font.BOLD, 16);
 
     public MODashboardUI(User user) {
         super(user);
@@ -98,6 +106,13 @@ public class MODashboardUI extends DashBoardUI {
                 () -> openPanelInFrame("Message TA", new MOMessageTAUI(currentUser))
         ));
 
+        gridPanel.add(createFeatureCard(
+                "View Statistics",
+                "View application and TA recruitment statistics",
+                "VS",
+                () -> openPanelInFrame("View Statistics", new MOStatisticsUI(currentUser))
+        ));
+
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.gridy = 0;
@@ -111,6 +126,10 @@ public class MODashboardUI extends DashBoardUI {
 
     private JPanel createFeatureCard(String title, String description, String badgeText, Runnable action) {
         JPanel card = new JPanel();
+        
+        // 优化 1：给卡片设置专属名称，方便后续精准查找
+        card.setName("FeatureCard"); 
+        
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBackground(CARD_BG);
         card.setBorder(BorderFactory.createCompoundBorder(
@@ -127,18 +146,18 @@ public class MODashboardUI extends DashBoardUI {
         badge.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JLabel badgeLabel = new JLabel(badgeText);
-        badgeLabel.setFont(new Font("Arial", Font.BOLD, 16));
+        badgeLabel.setFont(BADGE_FONT); // 使用复用的字体常量
         badgeLabel.setForeground(Color.WHITE);
         badge.add(badgeLabel);
 
         JLabel titleLabel = new JLabel(title);
         titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 22));
+        titleLabel.setFont(TITLE_FONT); // 使用复用的字体常量
         titleLabel.setForeground(TITLE_COLOR);
 
         JLabel descLabel = new JLabel("<html><div style='width:220px;'>" + description + "</div></html>");
         descLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        descLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+        descLabel.setFont(DESC_FONT); // 使用复用的字体常量
         descLabel.setForeground(SUBTITLE_COLOR);
 
         JLabel actionHint = new JLabel("Click to open");
@@ -149,39 +168,70 @@ public class MODashboardUI extends DashBoardUI {
         card.add(badge);
         card.add(Box.createVerticalStrut(18));
         card.add(titleLabel);
-        card.add(Box.createVerticalStrut(8));
+        card.add(Box.createVerticalStrut(10));
         card.add(descLabel);
-        card.add(Box.createVerticalStrut(12));
+        card.add(Box.createVerticalGlue());
+        card.add(Box.createVerticalStrut(18));
         card.add(actionHint);
 
-        card.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
-                card.setBackground(CARD_HOVER);
-            }
-
-            @Override
-            public void mouseExited(java.awt.event.MouseEvent evt) {
-                card.setBackground(CARD_BG);
-            }
-
-            @Override
-            public void mouseClicked(java.awt.event.MouseEvent evt) {
-                action.run();
-            }
-        });
+        addCardInteraction(card, action);
+        addCardInteraction(badge, action);
+        addCardInteraction(titleLabel, action);
+        addCardInteraction(descLabel, action);
+        addCardInteraction(actionHint, action);
 
         return card;
     }
 
+    private void addCardInteraction(Component component, Runnable action) {
+        component.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                action.run();
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                Component source = e.getComponent();
+                JPanel card = findParentCard(source);
+                if (card != null) {
+                    card.setBackground(CARD_HOVER);
+                }
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                Component source = e.getComponent();
+                JPanel card = findParentCard(source);
+                if (card != null) {
+                    card.setBackground(CARD_BG);
+                }
+            }
+        });
+    }
+
+    // 优化 1：使用 Name 进行精准比对，比判断 Border 和 Layout 更安全稳健
+    private JPanel findParentCard(Component component) {
+        Component current = component;
+        while (current != null) {
+            if ("FeatureCard".equals(current.getName()) && current instanceof JPanel) {
+                return (JPanel) current;
+            }
+            current = current.getParent();
+        }
+        return null;
+    }
+
+    // 优化 3：改为模态 JDialog，防止用户手抖连续点击弹出多个相同窗口
     private void openPanelInFrame(String title, Object panel) {
         if (panel instanceof JPanel) {
-            JFrame frame = new JFrame(title);
-            frame.setSize(800, 600);
-            frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-            frame.setLocationRelativeTo(this);
-            frame.add((JPanel) panel);
-            frame.setVisible(true);
+            Window parentWindow = SwingUtilities.getWindowAncestor(this);
+            JDialog dialog = new JDialog(parentWindow, title, Dialog.ModalityType.APPLICATION_MODAL);
+            dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+            dialog.setContentPane((JPanel) panel);
+            dialog.setSize(1100, 650);
+            dialog.setLocationRelativeTo(this);
+            dialog.setVisible(true);
         } else if (panel instanceof JFrame) {
             JFrame frame = (JFrame) panel;
             frame.setTitle(title);
