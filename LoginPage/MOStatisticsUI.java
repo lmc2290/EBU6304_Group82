@@ -1,11 +1,11 @@
 package LoginPage;
 
-import java.awt.*;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 public class MOStatisticsUI extends JFrame {
     private User currentUser;
@@ -13,11 +13,6 @@ public class MOStatisticsUI extends JFrame {
     private DefaultTableModel tableModel;
     private JComboBox<String> moduleComboBox;
     private String selectedModuleId;
-
-    private JLabel totalApplicantsLabel;
-    private JLabel shortlistedLabel;
-    private JLabel rejectedLabel;
-    private JLabel pendingLabel;
 
     public MOStatisticsUI(User user) {
         this.currentUser = user;
@@ -60,23 +55,13 @@ public class MOStatisticsUI extends JFrame {
 
         filterPanel.add(new JLabel("Select Module:"));
         moduleComboBox = new JComboBox<>();
-
-        List<String[]> modules = UnifiedDataStore.getApprovedModules();
-        for (String[] module : modules) {
-            if (module.length >= 2) {
-                moduleComboBox.addItem(module[0]);
-            }
+        List<Module> modules = MockDataManager.getModules();
+        for (Module module : modules) {
+            moduleComboBox.addItem(module.getModuleName());
         }
-
-        if (modules.isEmpty()) {
-            moduleComboBox.addItem("ECS401");
-            moduleComboBox.addItem("ECS414");
-        }
-
-        if (selectedModuleId != null && !selectedModuleId.isEmpty()) {
+        if (!modules.isEmpty()) {
             moduleComboBox.setSelectedItem(selectedModuleId);
         }
-
         moduleComboBox.addActionListener(e -> {
             String selected = (String) moduleComboBox.getSelectedItem();
             if (selected != null) {
@@ -104,20 +89,6 @@ public class MOStatisticsUI extends JFrame {
 
         mainPanel.add(centerPanel, BorderLayout.CENTER);
 
-        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        bottomPanel.setBackground(Color.WHITE);
-        JButton backButton = new JButton("Back to Dashboard");
-        backButton.setFont(new Font("Arial", Font.PLAIN, 14));
-        backButton.addActionListener(e -> {
-            dispose();
-            Window parentWindow = SwingUtilities.getWindowAncestor(this);
-            if (parentWindow != null) {
-                parentWindow.toFront();
-            }
-        });
-        bottomPanel.add(backButton);
-        mainPanel.add(bottomPanel, BorderLayout.SOUTH);
-
         add(mainPanel);
         refreshStatistics();
     }
@@ -126,20 +97,15 @@ public class MOStatisticsUI extends JFrame {
         JPanel cardsPanel = new JPanel(new GridLayout(1, 4, 15, 15));
         cardsPanel.setBackground(new Color(247, 247, 247));
 
-        totalApplicantsLabel = new JLabel("0");
-        shortlistedLabel = new JLabel("0");
-        rejectedLabel = new JLabel("0");
-        pendingLabel = new JLabel("0");
-
-        cardsPanel.add(createStatCard("Total Applicants", totalApplicantsLabel, new Color(0, 123, 255)));
-        cardsPanel.add(createStatCard("Shortlisted", shortlistedLabel, new Color(40, 167, 69)));
-        cardsPanel.add(createStatCard("Rejected", rejectedLabel, new Color(220, 53, 69)));
-        cardsPanel.add(createStatCard("Pending Review", pendingLabel, new Color(255, 193, 7)));
+        cardsPanel.add(createStatCard("Total Applicants", "0", new Color(0, 123, 255)));
+        cardsPanel.add(createStatCard("Shortlisted", "0", new Color(40, 167, 69)));
+        cardsPanel.add(createStatCard("Rejected", "0", new Color(220, 53, 69)));
+        cardsPanel.add(createStatCard("Pending Review", "0", new Color(255, 193, 7)));
 
         return cardsPanel;
     }
 
-    private JPanel createStatCard(String title, JLabel valueLabel, Color color) {
+    private JPanel createStatCard(String title, String value, Color color) {
         JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBackground(Color.WHITE);
@@ -153,6 +119,7 @@ public class MOStatisticsUI extends JFrame {
         titleLabel.setForeground(new Color(108, 117, 125));
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
+        JLabel valueLabel = new JLabel(value);
         valueLabel.setFont(new Font("Arial", Font.BOLD, 28));
         valueLabel.setForeground(color);
         valueLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -186,7 +153,7 @@ public class MOStatisticsUI extends JFrame {
     }
 
     private void refreshStatistics() {
-        List<String[]> applicants = UnifiedDataStore.getAllApplicants();
+        List<Applicant> applicants = MockDataManager.getApplicants();
         Map<String, Integer> stats = new HashMap<>();
 
         int total = 0;
@@ -194,26 +161,18 @@ public class MOStatisticsUI extends JFrame {
         int rejected = 0;
         int pending = 0;
 
-        for (String[] app : applicants) {
-            if (app.length >= 8 && app[3].equals(selectedModuleId)) {
+        for (Applicant app : applicants) {
+            if (app.getModuleName().equals(selectedModuleId)) {
                 total++;
-                String status = app[7];
-                if ("Shortlisted".equalsIgnoreCase(status)) {
+                if (app.getStatus().equals("Shortlisted")) {
                     shortlisted++;
-                } else if ("Rejected".equalsIgnoreCase(status)) {
+                } else if (app.getStatus().equals("Rejected")) {
                     rejected++;
-                } else if ("Pending".equalsIgnoreCase(status)) {
+                } else {
                     pending++;
-                } else if ("Approved".equalsIgnoreCase(status)) {
-                    // Approved is not counted here, it's a positive outcome
                 }
             }
         }
-
-        totalApplicantsLabel.setText(String.valueOf(total));
-        shortlistedLabel.setText(String.valueOf(shortlisted));
-        rejectedLabel.setText(String.valueOf(rejected));
-        pendingLabel.setText(String.valueOf(pending));
 
         tableModel.setRowCount(0);
 
@@ -222,6 +181,8 @@ public class MOStatisticsUI extends JFrame {
         tableModel.addRow(new Object[]{"Rejected", rejected, getPercentage(rejected, total), "Not Qualified"});
         tableModel.addRow(new Object[]{"Pending Review", pending, getPercentage(pending, total), "Under Review"});
         tableModel.addRow(new Object[]{"Average English Level", "-", "-", getAverageEnglishLevel(applicants)});
+
+        updateSummaryCards(total, shortlisted, rejected, pending);
     }
 
     private String getPercentage(int value, int total) {
@@ -229,17 +190,17 @@ public class MOStatisticsUI extends JFrame {
         return String.format("%.1f%%", (double)value / total * 100);
     }
 
-    private String getAverageEnglishLevel(List<String[]> applicants) {
+    private String getAverageEnglishLevel(List<Applicant> applicants) {
         int advanced = 0;
         int intermediate = 0;
         int basic = 0;
 
-        for (String[] app : applicants) {
-            if (app.length >= 8 && app[3].equals(selectedModuleId)) {
-                String level = app[5].toLowerCase();
-                if (level.contains("7.5")) advanced++;
-                else if (level.contains("7.0")) intermediate++;
-                else if (level.contains("6.5")) basic++;
+        for (Applicant app : applicants) {
+            if (app.getModuleName().equals(selectedModuleId)) {
+                String level = app.getEnglishLevel().toLowerCase();
+                if (level.contains("advanced")) advanced++;
+                else if (level.contains("intermediate")) intermediate++;
+                else if (level.contains("basic")) basic++;
             }
         }
 
@@ -247,5 +208,18 @@ public class MOStatisticsUI extends JFrame {
         else if (intermediate > advanced && intermediate > basic) return "Intermediate";
         else if (basic > advanced && basic > intermediate) return "Basic";
         return "Mixed";
+    }
+
+    private void updateSummaryCards(int total, int shortlisted, int rejected, int pending) {
+        JPanel centerPanel = (JPanel) getContentPane().getComponent(1);
+        if (centerPanel != null) {
+            JPanel cardsPanel = (JPanel) centerPanel.getComponent(0);
+            if (cardsPanel != null && cardsPanel.getComponentCount() >= 4) {
+                ((JLabel)((JPanel)cardsPanel.getComponent(0)).getComponent(2)).setText(String.valueOf(total));
+                ((JLabel)((JPanel)cardsPanel.getComponent(1)).getComponent(2)).setText(String.valueOf(shortlisted));
+                ((JLabel)((JPanel)cardsPanel.getComponent(2)).getComponent(2)).setText(String.valueOf(rejected));
+                ((JLabel)((JPanel)cardsPanel.getComponent(3)).getComponent(2)).setText(String.valueOf(pending));
+            }
+        }
     }
 }
