@@ -126,19 +126,38 @@ public class ProfileManagerDialog extends JDialog {
     }
 
     private void handleSave() {
-        // basic information validation
-        if (nameField.getText().trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Name cannot be empty!", "Validation Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        // length limitation
+        // ==========================================
+        // 🛡️ Data Validation & Security Checks
+        // ==========================================
         String clText = coverLetterArea.getText();
+
+        // [修复]：把之前不小心删掉的长度校验加回来
         if (clText.length() > 1000) {
             JOptionPane.showMessageDialog(this, "Cover letter template is too long (Max 1000 characters).", "Validation Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        profile.setName(nameField.getText());
+        String inputName = nameField.getText().trim();
+        String expText = expArea.getText();
+        String otherSkillsText = otherSkillsField.getText();
+
+        // 1. Regex Name Validation
+        if (!DataValidator.isValidName(inputName)) {
+            JOptionPane.showMessageDialog(this,
+                    "Invalid Name!\nPlease use only English letters and spaces (2-50 characters).",
+                    "Validation Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // 2. Anti-Injection Security Check (防止恶意的经验和技能文本注入)
+        if (DataValidator.containsMaliciousCharacters(expText) || DataValidator.containsMaliciousCharacters(otherSkillsText)) {
+            JOptionPane.showMessageDialog(this,
+                    "Security Alert: Potential malicious script or SQL keywords detected in your text!",
+                    "Security Warning", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        // ==========================================
+
+        profile.setName(inputName);
         profile.setGender((String) genderCombo.getSelectedItem());
         profile.setGrade((String) gradeCombo.getSelectedItem());
         profile.setCollege(collegeField.getText());
@@ -148,8 +167,8 @@ public class ProfileManagerDialog extends JDialog {
             if (cb.isSelected()) selected.add(cb.getText());
         }
         profile.setSelectedSkills(selected);
-        profile.setOtherSkills(otherSkillsField.getText());
-        profile.setExperience(expArea.getText());
+        profile.setOtherSkills(otherSkillsText);
+        profile.setExperience(expText);
 
         // save cover letter
         profile.setCoverLetterTemplate(clText);

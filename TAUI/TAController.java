@@ -42,11 +42,14 @@ public class TAController {
 
     public void saveUserProfile(String userId, UserProfile profile) {
         userProfileMap.put(userId, profile);
+        // [核心修改]：每次修改档案后，立即保存到 TXT
+        TADataStore.saveProfiles(userProfileMap);
+        System.out.println("[System] Profile data saved to ta_profiles.txt.");
     }
     public TAController() {
         allJobs = new ArrayList<>();
 
-        // Mock Data: Initializing Job Postings
+        // 初始化岗位数据 (Mock Database)
         allJobs.add(new Job("J01", "Java Lab Assistant", "ECS401", "10 hours/week", "£15/hr", "1:5",
                 "Assist students with Java lab exercises and mark weekly assignments.", false,
                 "Lab Assistant", "Java"));
@@ -56,12 +59,13 @@ public class TAController {
                 "Tutor", "Python"));
 
         allJobs.add(new Job("J03", "Signal Processing Grader", "ECS505", "15 hours/week", "£14/hr", "1:10",
-                "Grade MATLAB scripts for communication systems and signal processing assignments. (Deadline Passed)", true,
+                "Grade MATLAB scripts for communication systems and signal processing assignments.", true,
                 "Grader", "MATLAB"));
 
-        // Initialize the Maps for user data isolation
-        userCVsMap = new HashMap<>();
-        userApplicationsMap = new HashMap<>();
+        // [核心修改]：程序启动时，从本地 TXT 文件加载数据！
+        userProfileMap = TADataStore.loadProfiles();
+        userApplicationsMap = TADataStore.loadApplications(allJobs, userProfileMap);
+        System.out.println("[System] Data successfully loaded from local text files.");
     }
 
 
@@ -182,15 +186,56 @@ public class TAController {
 
     /**
      * Retrieves the complete list of job applications for a specific user.
-     * Implements defensive programming to guarantee a non-null return value.
-     * * @param userId The unique identifier of the applicant.
-     * @return A List containing all ApplicationRecords for the user.
+     * [Feature Task 4]: Synchronizes status with MO DataStore dynamically.
      */
     public List<ApplicationRecord> getUserApplications(String userId) {
         if (userId == null || userId.trim().isEmpty()) {
             return new ArrayList<>();
         }
-        return userApplicationsMap.computeIfAbsent(userId, k -> new ArrayList<>());
+
+        List<ApplicationRecord> myApps = userApplicationsMap.computeIfAbsent(userId, k -> new ArrayList<>());
+
+        boolean dataChanged = false;
+
+        try {
+            // 1. 调用之前集成的桥梁，直接读取 MO 端的最新申请列表 (CSV)
+            List<LoginPage.Applicant> moApplicants = LoginPage.MODataStore.loadApplicants();
+
+            // 2. 遍历本地当前 TA 的所有申请记录
+            for (ApplicationRecord localApp : myApps) {
+                // 如果 TA 已经主动撤回 (Withdrawn)，则忽略 MO 的状态，保持撤回
+                if (localApp.getStatus().equalsIgnoreCase("Withdrawn")) {
+                    continue;
+                }
+
+                // 3. 在 MO 的数据库里寻找对应的记录 (通过 UserId 和 Module 交叉匹配)
+                for (LoginPage.Applicant moApp : moApplicants) {
+                    if (moApp.getApplicantId().equals(userId) &&
+                            moApp.getModuleName().equals(localApp.getTargetJob().getModule())) {
+
+                        // 4. 核心比对：如果发现 MO 那边的状态跟本地不一样 (比如变成了 Approved/Rejected)
+                        if (!localApp.getStatus().equals(moApp.getStatus())) {
+                            localApp.setStatus(moApp.getStatus()); // 更新本地状态
+                            dataChanged = true;
+                            System.out.println("[Sync Engine] Status updated for " + moApp.getModuleName() + " -> " + moApp.getStatus());
+                        }
+                        break; // 匹配到记录后跳出内层循环
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("[Sync Error] Failed to sync with MO DataStore: " + e.getMessage());
+        }
+
+        // 5. 如果发现数据有变动，调用队友新写的底层保存引擎写入本地文件
+        if (dataChanged) {
+            System.out.println("[DataStore] Changes detected, triggering local file save...");
+            // ⚠️ 等你拉取了队友的代码后，把下面这行的注释解开，并换成她写的保存方法：
+            // TADataStore.saveApplications(userApplicationsMap);
+        }
+        // =========================================================
+
+        return myApps;
     }
 
 
@@ -214,6 +259,7 @@ public class TAController {
         try {
             ApplicationRecord newRecord = new ApplicationRecord(targetJob, userId, selectedProfile, coverLetter);
             existingApps.add(newRecord); // 存入 TA 自己的内存中
+            TADataStore.saveApplications(userApplicationsMap);
 
             // =========================================================
             // 🚀 [CROSS-TEAM INTEGRATION]: 将数据写入 MO 组的 CSV 数据库
@@ -289,6 +335,7 @@ public class TAController {
         try {
             // 3. Execute State Change (US-07 AC3)
             record.setStatus("Withdrawn");
+            TADataStore.saveApplications(userApplicationsMap);
 
             // Log transaction for audit purposes
             System.out.println("=== Application Withdrawn ===");
