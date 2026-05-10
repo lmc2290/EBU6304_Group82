@@ -5,6 +5,7 @@ import java.awt.*;
 
 public class MOJobVacancyUI extends JPanel {
     private final User currentUser;
+    private JTextField moduleCodeField;
     private JTextField moduleNameField;
     private JTextArea responsibilitiesArea;
     private JTextArea requirementsArea;
@@ -40,6 +41,7 @@ public class MOJobVacancyUI extends JPanel {
         gbc.insets = new Insets(8, 8, 8, 8);
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
+        moduleCodeField = new JTextField(20);
         moduleNameField = new JTextField(currentUser.getModuleName(), 20);
         responsibilitiesArea = new JTextArea(4, 20);
         requirementsArea = new JTextArea(4, 20);
@@ -48,34 +50,41 @@ public class MOJobVacancyUI extends JPanel {
 
         gbc.gridx = 0;
         gbc.gridy = 0;
+        formPanel.add(new JLabel("Module Code:"), gbc);
+
+        gbc.gridx = 1;
+        formPanel.add(moduleCodeField, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 1;
         formPanel.add(new JLabel("Module Name:"), gbc);
 
         gbc.gridx = 1;
         formPanel.add(moduleNameField, gbc);
 
         gbc.gridx = 0;
-        gbc.gridy = 1;
+        gbc.gridy = 2;
         formPanel.add(new JLabel("Responsibilities:"), gbc);
 
         gbc.gridx = 1;
         formPanel.add(new JScrollPane(responsibilitiesArea), gbc);
 
         gbc.gridx = 0;
-        gbc.gridy = 2;
+        gbc.gridy = 3;
         formPanel.add(new JLabel("Requirements:"), gbc);
 
         gbc.gridx = 1;
         formPanel.add(new JScrollPane(requirementsArea), gbc);
 
         gbc.gridx = 0;
-        gbc.gridy = 3;
+        gbc.gridy = 4;
         formPanel.add(new JLabel("Positions:"), gbc);
 
         gbc.gridx = 1;
         formPanel.add(positionsField, gbc);
 
         gbc.gridx = 0;
-        gbc.gridy = 4;
+        gbc.gridy = 5;
         formPanel.add(new JLabel("Deadline (YYYY-MM-DD):"), gbc);
 
         gbc.gridx = 1;
@@ -100,14 +109,15 @@ public class MOJobVacancyUI extends JPanel {
     }
 
     private void saveModule() {
+        String moduleCode = moduleCodeField.getText().trim();
         String moduleName = moduleNameField.getText().trim();
         String responsibilities = responsibilitiesArea.getText().trim();
         String requirements = requirementsArea.getText().trim();
         String positionsText = positionsField.getText().trim();
         String deadline = deadlineField.getText().trim();
 
-        if (moduleName.isEmpty() || responsibilities.isEmpty() || requirements.isEmpty()
-                || positionsText.isEmpty() || deadline.isEmpty()) {
+        if (moduleCode.isEmpty() || moduleName.isEmpty() || responsibilities.isEmpty()
+                || requirements.isEmpty() || positionsText.isEmpty() || deadline.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Please fill in all fields.");
             return;
         }
@@ -120,22 +130,15 @@ public class MOJobVacancyUI extends JPanel {
             return;
         }
 
-        Module module = new Module(
-                moduleName,
-                responsibilities,
-                requirements,
-                positions,
-                deadline,
-                "Pending Review"
-        );
+        UnifiedDataStore.addModule(moduleCode, moduleName, currentUser.getId(),
+                positions, currentUser.getId());
 
-        MODataStore.addModule(module);
-
-        JOptionPane.showMessageDialog(this, "Job vacancy submitted successfully.");
+        JOptionPane.showMessageDialog(this, "Job vacancy submitted successfully. Status: Pending");
         clearForm();
     }
 
     private void clearForm() {
+        moduleCodeField.setText("");
         moduleNameField.setText(currentUser.getModuleName());
         responsibilitiesArea.setText("");
         requirementsArea.setText("");

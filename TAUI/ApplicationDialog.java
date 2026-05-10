@@ -1,7 +1,7 @@
 package TAUI;
 
-import javax.swing.*;
 import java.awt.*;
+import javax.swing.*;
 
 public class ApplicationDialog extends JDialog {
 
@@ -110,6 +110,11 @@ public class ApplicationDialog extends JDialog {
                             "Success",
                             JOptionPane.INFORMATION_MESSAGE);
                     dispose();
+                } else {
+                    JOptionPane.showMessageDialog(this,
+                            "Application failed to submit.\nPlease check if you already have an active application for this job.",
+                            "Submission Failed",
+                            JOptionPane.ERROR_MESSAGE);
                 }
             });
         }
