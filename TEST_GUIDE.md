@@ -6,9 +6,9 @@
 
 | 角色 | 账号 | 密码 |
 |------|------|------|
-| Admin | admin | admin123 |
-| MO | mo001 | mo123 |
-| TA | ta001 | ta123 |
+| Admin | 0 | 任意 |
+| MO | 1-100 任意数字，例如 1 | 任意 |
+| TA | 101+，例如 101 | 任意 |
 
 ---
 
@@ -16,7 +16,7 @@
 
 ### 阶段1：MO 创建岗位
 1. 启动程序，选择 MO 登录
-2. 账号：mo001，密码：mo123
+2. 账号：1，密码：任意
 3. Dashboard 点击 "Job Vacancy"
 4. 点击 "Create New Position"
 5. 填写信息：
@@ -28,14 +28,14 @@
 
 ### 阶段2：Admin 审批岗位
 1. 退出登录，选择 Admin 登录
-2. 账号：admin，密码：admin123
+2. 账号：0，密码：任意
 3. Dashboard 点击 "Course Application"
 4. 找到 ECS999，点击 "Approve"
 5. 验证：data/modules.csv 中 ECS999 状态变为 Approved
 
 ### 阶段3：TA 申请岗位
 1. 退出登录，选择 TA 登录
-2. 账号：ta001，密码：ta123
+2. 账号：101，密码：任意
 3. Dashboard 应能看到 ECS999（Approved 状态）
 4. 点击 "Apply" 申请该岗位
 5. 填写 Cover Letter
