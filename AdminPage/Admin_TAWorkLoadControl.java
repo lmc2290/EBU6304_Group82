@@ -2,43 +2,33 @@ package AdminPage;
 
 import LoginPage.User;
 import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
 
 public class Admin_TAWorkLoadControl {
     private final User currentUser;
     private final Admin_TAWorkLoadControlUI boundary;
 
     public int currentLimit = 3;
-    public int warningHourLimit = 5;
+    public int warningHourLimit = 20; 
 
-    // 保留原有的配置保存路径
+    // 配置保存路径
     private final File configFile = new File("data/limit_config.txt");
     private final File hourConfigFile = new File("data/hour_limit_config.txt");
-    
-    // 【修改点】数据源改为跨角色通用的 applicants.csv，解决数据孤岛问题
-    private final File applicantsFile = new File("data/applicants.csv");
+    private final File applicantsFile = new File("data/applicants.csv"); 
 
     public Admin_TAWorkLoadControl(User user) {
         this.currentUser = user;
-        // 初始化必须在注入 UI 之前，否则 UI 拿不到 config 数据
+        
         configFile.getParentFile().mkdirs();
         loadLimitFromFile();
         loadHourLimitFromFile();
         
-       this.boundary = new Admin_TAWorkLoadControlUI(this);
-
-// ✅ 关键：丢到Swing事件线程执行
-SwingUtilities.invokeLater(() -> loadTADataFromFile());
+        this.boundary = new Admin_TAWorkLoadControlUI(this);
     }
 
     // ==========================================
-    // 配置读写逻辑 (保留你的优秀原生设计)
+    // 配置读写逻辑
     // ==========================================
     public void loadLimitFromFile() {
         if (!configFile.exists()) return;
@@ -64,7 +54,7 @@ SwingUtilities.invokeLater(() -> loadTADataFromFile());
         try (BufferedReader br = new BufferedReader(new FileReader(hourConfigFile))) {
             String line = br.readLine();
             if (line != null) warningHourLimit = Integer.parseInt(line.trim());
-        } catch (Exception e) { warningHourLimit = 5; }
+        } catch (Exception e) { warningHourLimit = 20; }
     }
 
     public void saveHourLimitToFile() {
@@ -79,15 +69,12 @@ SwingUtilities.invokeLater(() -> loadTADataFromFile());
     }
 
     // ==========================================
-    // 【核心新功能 1】数据一致性：从全局 CSV 统计真实工作量
+    // 核心数据提供：完全解耦，只返回数据列表
     // ==========================================
-    public void loadTADataFromFile() {
-        DefaultTableModel model = boundary.getTableModel();
-        model.setRowCount(0); // 清空表格
+    public List<Object[]> getRealTAWorkloadData() {
+        List<Object[]> workloadData = new ArrayList<>();
+        if (!applicantsFile.exists()) return workloadData;
 
-        if (!applicantsFile.exists()) return;
-
-        // 使用 Map 分组聚合每个 TA 的数据
         Map<String, String> taNames = new HashMap<>();
         Map<String, Integer> taApprovedCount = new HashMap<>();
 
@@ -98,14 +85,14 @@ SwingUtilities.invokeLater(() -> loadTADataFromFile());
                 if (line.isBlank()) continue;
                 String[] parts = line.split(",");
                 if (parts.length >= 8) {
-                    String taId = parts[0];
-                    String name = parts[1];
-                    String status = parts[7]; // 状态列
+                    String taId = parts[0].trim();
+                    String name = parts[1].trim();
+                    String status = parts[7].trim(); 
 
                     taNames.put(taId, name);
                     taApprovedCount.putIfAbsent(taId, 0);
 
-                    // 只有 Approved (已通过) 的才计算工作量
+                    // 只有 Approved 的才计算工作量
                     if (status.equalsIgnoreCase("Approved")) {
                         taApprovedCount.put(taId, taApprovedCount.get(taId) + 1);
                     }
@@ -113,28 +100,38 @@ SwingUtilities.invokeLater(() -> loadTADataFromFile());
             }
         } catch (Exception e) { e.printStackTrace(); }
 
-        // 将聚合好的真实数据推送到前端表格
         for (String taId : taNames.keySet()) {
             String name = taNames.get(taId);
             int enrolledCourses = taApprovedCount.get(taId);
-            
-            // 假设一门课占用 10 小时工作量 (根据实际需求调整)
             int estimatedHours = enrolledCourses * 10; 
-            // 自动生成学校后缀的标准邮箱格式
             String email = name.toLowerCase().replace(" ", ".") + "_" + taId.toLowerCase() + "@qmul.ac.uk";
 
-            model.addRow(new String[]{
-                taId, name, String.valueOf(enrolledCourses), String.valueOf(estimatedHours), email
-            });
+            workloadData.add(new Object[]{taId, name, String.valueOf(enrolledCourses), String.valueOf(estimatedHours), email});
         }
+        return workloadData;
     }
 
     // ==========================================
-    // 【核心新功能 2】数据清理：物理删除被拒绝和撤回的数据
+    // 数据清理与移除逻辑
     // ==========================================
+    
+    // 清理废弃数据 (Rejected / Withdrawn)
     public int cleanUpInvalidData() {
         if (!applicantsFile.exists()) return 0;
+        return filterCSVData(parts -> {
+            String status = parts[7];
+            return status.equalsIgnoreCase("Rejected") || status.equalsIgnoreCase("Withdrawn");
+        });
+    }
 
+    // 按 ID 精准开除/清理毕业的 TA
+    public int purgeTAById(String targetTaId) {
+        if (!applicantsFile.exists() || targetTaId == null || targetTaId.isBlank()) return 0;
+        return filterCSVData(parts -> parts[0].trim().equalsIgnoreCase(targetTaId.trim()));
+    }
+
+    // 内部通用方法：根据条件过滤 CSV 并覆写，返回删除的行数
+    private int filterCSVData(java.util.function.Predicate<String[]> deleteCondition) {
         List<String> validLines = new ArrayList<>();
         int removedCount = 0;
 
@@ -146,10 +143,9 @@ SwingUtilities.invokeLater(() -> loadTADataFromFile());
             while ((line = br.readLine()) != null) {
                 String[] parts = line.split(",");
                 if (parts.length >= 8) {
-                    String status = parts[7];
-                    if (status.equalsIgnoreCase("Rejected") || status.equalsIgnoreCase("Withdrawn")) {
+                    if (deleteCondition.test(parts)) {
                         removedCount++;
-                        continue; // 抛弃这些行
+                        continue;
                     }
                 }
                 validLines.add(line);
@@ -173,8 +169,6 @@ SwingUtilities.invokeLater(() -> loadTADataFromFile());
         try {
             currentLimit = Integer.parseInt(input.trim());
             saveLimitToFile();
-            boundary.refreshLimitLabels();
-            boundary.getTaTable().repaint();
         } catch (Exception e) {
             JOptionPane.showMessageDialog(boundary, "Please enter a valid number.");
         }
@@ -184,55 +178,9 @@ SwingUtilities.invokeLater(() -> loadTADataFromFile());
         try {
             warningHourLimit = Integer.parseInt(input.trim());
             saveHourLimitToFile();
-            boundary.refreshLimitLabels();
-            boundary.getTaTable().repaint();
         } catch (Exception e) {
             JOptionPane.showMessageDialog(boundary, "Please enter a valid number.");
         }
-    }
-
-    // ==========================================
-    // 导出逻辑 (保留原生的完美实现)
-    // ==========================================
-    public void exportDataToCSV() {
-        JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setSelectedFile(new File("TA_Workload.csv"));
-        int result = fileChooser.showSaveDialog(boundary);
-        if (result != JFileChooser.APPROVE_OPTION) return;
-
-        File file = fileChooser.getSelectedFile();
-        if (!file.getName().endsWith(".csv"))
-            file = new File(file.getParent(), file.getName() + ".csv");
-
-        try (BufferedWriter w = new BufferedWriter(
-                new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8))) {
-
-            DefaultTableModel m = boundary.getTableModel();
-            for (int i = 0; i < m.getColumnCount(); i++) {
-                w.write(escape(m.getColumnName(i)));
-                if (i < m.getColumnCount()-1) w.write(",");
-            }
-            w.newLine();
-
-            for (int i = 0; i < m.getRowCount(); i++) {
-                for (int j = 0; j < m.getColumnCount(); j++) {
-                    Object v = m.getValueAt(i, j);
-                    w.write(escape(v == null ? "" : v.toString()));
-                    if (j < m.getColumnCount()-1) w.write(",");
-                }
-                w.newLine();
-            }
-            JOptionPane.showMessageDialog(boundary, "Export success!");
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(boundary, "Export failed: "+e.getMessage());
-        }
-    }
-
-    private String escape(String s) {
-        if (s.startsWith("=")||s.startsWith("+")||s.startsWith("-")||s.startsWith("@")) s = "'"+s;
-        if (s.contains(",")||s.contains("\"")||s.contains("\n"))
-            s = "\"" + s.replace("\"","\"\"") + "\"";
-        return s;
     }
 
     public Admin_TAWorkLoadControlUI getUi() {
