@@ -130,11 +130,17 @@ public class MOJobVacancyUI extends JPanel {
             return;
         }
 
-        UnifiedDataStore.addModule(moduleCode, moduleName, currentUser.getId(),
+        boolean success = UnifiedDataStore.addModule(moduleCode, moduleName, currentUser.getId(),
                 positions, currentUser.getId());
 
-        JOptionPane.showMessageDialog(this, "Job vacancy submitted successfully. Status: Pending");
-        clearForm();
+        if (success) {
+            JOptionPane.showMessageDialog(this, "Job vacancy submitted successfully. Status: Pending");
+            clearForm();
+        } else {
+            JOptionPane.showMessageDialog(this,
+                    "Module code '" + moduleCode + "' already exists.\nPlease use a different module code.",
+                    "Duplicate Module", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void clearForm() {

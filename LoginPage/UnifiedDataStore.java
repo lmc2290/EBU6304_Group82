@@ -59,9 +59,19 @@ public class UnifiedDataStore {
 
     // ==================== MODULES CSV OPERATIONS ====================
 
-    public static void addModule(String moduleCode, String moduleName, String moId,
+    public static boolean addModule(String moduleCode, String moduleName, String moId,
                                   int requiredTas, String createdBy) {
         ensureDataFilesExist();
+
+        // Check for duplicate moduleCode
+        List<String[]> existing = getAllModules();
+        for (String[] m : existing) {
+            if (m.length >= 5 && m[0].equalsIgnoreCase(moduleCode)) {
+                System.err.println("Module " + moduleCode + " already exists. Cannot create duplicate.");
+                return false;
+            }
+        }
+
         String timestamp = LocalDateTime.now().format(DATE_FORMAT);
         String line = String.format("%s,%s,%s,%d,Pending,%s,%s,,,",
                 escapeCsv(moduleCode), escapeCsv(moduleName), escapeCsv(moId),
@@ -70,8 +80,10 @@ public class UnifiedDataStore {
         try {
             Files.write(Paths.get(MODULES_FILE), List.of(line),
                     StandardCharsets.UTF_8, StandardOpenOption.APPEND);
+            return true;
         } catch (IOException e) {
             System.err.println("Failed to add module: " + e.getMessage());
+            return false;
         }
     }
 
@@ -117,6 +129,7 @@ public class UnifiedDataStore {
                                           String approvedBy, String rejectReason) {
         List<String[]> modules = getAllModules();
         String timestamp = LocalDateTime.now().format(DATE_FORMAT);
+        boolean updated = false;
 
         for (String[] module : modules) {
             if (module.length >= 5 && module[0].equalsIgnoreCase(moduleCode)) {
@@ -126,11 +139,13 @@ public class UnifiedDataStore {
                 if (newStatus.equalsIgnoreCase("Rejected") && rejectReason != null) {
                     module[9] = rejectReason;
                 }
-                break;
+                updated = true;
             }
         }
 
-        saveModules(modules);
+        if (updated) {
+            saveModules(modules);
+        }
     }
 
     private static void saveModules(List<String[]> modules) {
