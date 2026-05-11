@@ -43,13 +43,13 @@ public class UnifiedDataStore {
 
             if (!Files.exists(Paths.get(INTERVIEWS_FILE))) {
                 Files.write(Paths.get(INTERVIEWS_FILE),
-                    List.of("interviewId,applicantId,taName,moduleCode,date,time,location,status,createdAt"),
+                    List.of("interviewId,applicationId,taId,taName,moduleCode,moduleName,interviewTime,location,status,createdBy,createdAt"),
                     StandardCharsets.UTF_8, StandardOpenOption.CREATE);
             }
 
             if (!Files.exists(Paths.get(MESSAGES_FILE))) {
                 Files.write(Paths.get(MESSAGES_FILE),
-                    List.of("messageId,senderId,senderRole,receiverId,receiverName,moduleCode,content,sendAt"),
+                    List.of("messageId,fromRole,fromId,toTaId,toTaName,moduleCode,subject,content,sentAt"),
                     StandardCharsets.UTF_8, StandardOpenOption.CREATE);
             }
         } catch (IOException e) {
@@ -107,6 +107,12 @@ public class UnifiedDataStore {
         return getModulesByStatus("Pending");
     }
 
+    public static List<String[]> getModulesByMoId(String moId) {
+        return getAllModules().stream()
+                .filter(m -> m.length >= 3 && m[2].equalsIgnoreCase(moId))
+                .collect(Collectors.toList());
+    }
+
     public static void updateModuleStatus(String moduleCode, String newStatus,
                                           String approvedBy, String rejectReason) {
         List<String[]> modules = getAllModules();
@@ -132,7 +138,12 @@ public class UnifiedDataStore {
         lines.add("moduleCode,moduleName,moId,requiredTas,status,createdBy,createdAt,approvedBy,approvedAt,rejectReason");
 
         for (String[] m : modules) {
-            lines.add(String.join(",", m));
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < m.length; i++) {
+                if (i > 0) sb.append(",");
+                sb.append(escapeCsv(m[i]));
+            }
+            lines.add(sb.toString());
         }
 
         try {
@@ -202,6 +213,26 @@ public class UnifiedDataStore {
         return getApplicantsByStatus("Shortlisted");
     }
 
+    public static List<String[]> getApplicationsByMoId(String moId) {
+        List<String[]> moModules = getModulesByMoId(moId);
+        if (moModules.isEmpty()) {
+            return getAllApplicants();
+        }
+        Set<String> moModuleCodes = moModules.stream()
+                .filter(m -> m.length >= 1)
+                .map(m -> m[0].toLowerCase())
+                .collect(Collectors.toSet());
+        return getAllApplicants().stream()
+                .filter(a -> a.length >= 4 && moModuleCodes.contains(a[3].toLowerCase()))
+                .collect(Collectors.toList());
+    }
+
+    public static List<String[]> getApplicationsByTaId(String taId) {
+        return getAllApplicants().stream()
+                .filter(a -> a.length >= 2 && a[1].equalsIgnoreCase(taId))
+                .collect(Collectors.toList());
+    }
+
     public static void updateApplicantStatus(String applicationId, String moduleCode,
                                              String newStatus, String reviewedBy) {
         List<String[]> applicants = getAllApplicants();
@@ -225,7 +256,12 @@ public class UnifiedDataStore {
         lines.add("applicationId,taId,taName,moduleCode,moduleName,cvFile,coverLetter,status,submittedAt,reviewedBy,reviewedAt");
 
         for (String[] a : applicants) {
-            lines.add(String.join(",", a));
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < a.length; i++) {
+                if (i > 0) sb.append(",");
+                sb.append(escapeCsv(a[i]));
+            }
+            lines.add(sb.toString());
         }
 
         try {
@@ -237,15 +273,18 @@ public class UnifiedDataStore {
 
     // ==================== INTERVIEWS CSV OPERATIONS ====================
 
-    public static void addInterview(String applicantId, String taName, String moduleCode,
-                                    String date, String time, String location) {
+    public static void addInterview(String applicationId, String taId, String taName,
+                                    String moduleCode, String moduleName,
+                                    String interviewTime, String location,
+                                    String createdBy) {
         ensureDataFilesExist();
         String interviewId = "INT-" + System.currentTimeMillis();
         String timestamp = LocalDateTime.now().format(DATE_FORMAT);
-        String line = String.format("%s,%s,%s,%s,%s,%s,%s,Scheduled,%s",
-                escapeCsv(interviewId), escapeCsv(applicantId), escapeCsv(taName),
-                escapeCsv(moduleCode), escapeCsv(date), escapeCsv(time),
-                escapeCsv(location), timestamp);
+        String line = String.format("%s,%s,%s,%s,%s,%s,%s,%s,Scheduled,%s,%s",
+                escapeCsv(interviewId), escapeCsv(applicationId), escapeCsv(taId),
+                escapeCsv(taName), escapeCsv(moduleCode), escapeCsv(moduleName),
+                escapeCsv(interviewTime), escapeCsv(location),
+                escapeCsv(createdBy), timestamp);
 
         try {
             Files.write(Paths.get(INTERVIEWS_FILE), List.of(line),
@@ -275,15 +314,16 @@ public class UnifiedDataStore {
 
     // ==================== MESSAGES CSV OPERATIONS ====================
 
-    public static void addMessage(String senderId, String senderRole, String receiverId,
-                                   String receiverName, String moduleCode, String content) {
+    public static void addMessage(String fromRole, String fromId, String toTaId,
+                                   String toTaName, String moduleCode, String subject,
+                                   String content) {
         ensureDataFilesExist();
         String messageId = "MSG-" + System.currentTimeMillis();
         String timestamp = LocalDateTime.now().format(DATE_FORMAT);
-        String line = String.format("%s,%s,%s,%s,%s,%s,%s,%s",
-                escapeCsv(messageId), escapeCsv(senderId), escapeCsv(senderRole),
-                escapeCsv(receiverId), escapeCsv(receiverName), escapeCsv(moduleCode),
-                escapeCsv(content), timestamp);
+        String line = String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s",
+                escapeCsv(messageId), escapeCsv(fromRole), escapeCsv(fromId),
+                escapeCsv(toTaId), escapeCsv(toTaName), escapeCsv(moduleCode),
+                escapeCsv(subject != null ? subject : ""), escapeCsv(content), timestamp);
 
         try {
             Files.write(Paths.get(MESSAGES_FILE), List.of(line),
@@ -292,6 +332,32 @@ public class UnifiedDataStore {
             System.err.println("Failed to add message: " + e.getMessage());
         }
     }
+
+    // ==================== CONVENIENCE ALIASES ====================
+
+    public static List<String[]> loadModules() { return getAllModules(); }
+    public static List<String[]> loadApplications() { return getAllApplicants(); }
+    public static List<String[]> loadInterviews() { return getAllInterviews(); }
+
+    public static List<String[]> getAllMessages() {
+        List<String[]> messages = new ArrayList<>();
+        ensureDataFilesExist();
+
+        try (BufferedReader br = Files.newBufferedReader(Paths.get(MESSAGES_FILE), StandardCharsets.UTF_8)) {
+            br.readLine();
+            String line;
+            while ((line = br.readLine()) != null) {
+                if (!line.trim().isEmpty()) {
+                    messages.add(parseCsvLine(line));
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Failed to read messages: " + e.getMessage());
+        }
+        return messages;
+    }
+
+    public static List<String[]> loadMessages() { return getAllMessages(); }
 
     // ==================== UTILITY METHODS ====================
 

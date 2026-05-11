@@ -1,6 +1,7 @@
 package LoginPage;
 
 import java.awt.*;
+import java.util.ArrayList;
 import java.util.List;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -69,7 +70,7 @@ public class MOScheduleInterviewsUI extends JFrame {
         tablePanel.setLayout(new BorderLayout());
         tablePanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 20, 20));
 
-        String[] columnNames = {"ID", "Name", "Course", "English Level", "Action"};
+        String[] columnNames = {"Application ID", "Name", "Module", "Status", "Action"};
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -117,71 +118,85 @@ public class MOScheduleInterviewsUI extends JFrame {
     private void refreshShortlistedList() {
         tableModel.setRowCount(0);
 
-        List<String[]> applicants = UnifiedDataStore.getShortlistedApplicants();
-        for (String[] applicant : applicants) {
+        // Include both Pending and Shortlisted applicants for interview scheduling
+        List<String[]> pending = UnifiedDataStore.getApplicantsByStatus("Pending");
+        List<String[]> shortlisted = UnifiedDataStore.getShortlistedApplicants();
+        List<String[]> allCandidates = new ArrayList<>(shortlisted);
+        allCandidates.addAll(pending);
+
+        for (String[] applicant : allCandidates) {
             if (applicant.length >= 8 && applicant[3].equals(selectedModuleId)) {
                 Object[] row = new Object[5];
-                row[0] = applicant[1];
-                row[1] = applicant[2];
-                row[2] = applicant[4];
-                row[3] = applicant[5];
+                row[0] = applicant[0];  // applicationId
+                row[1] = applicant[2];  // taName
+                row[2] = applicant[4];  // moduleName
+                row[3] = applicant[7];  // status
                 row[4] = "Schedule Interview";
                 tableModel.addRow(row);
             }
         }
     }
 
-    private void showInterviewMenu(String applicantId, String applicantName) {
+    private void showInterviewMenu(String applicationId, String applicantName) {
         JPopupMenu menu = new JPopupMenu();
 
         JMenuItem scheduleItem = new JMenuItem("Schedule Interview");
-        scheduleItem.addActionListener(e -> scheduleInterview(applicantId, applicantName));
+        scheduleItem.addActionListener(e -> scheduleInterview(applicationId, applicantName));
         menu.add(scheduleItem);
 
         JMenuItem sendMessageItem = new JMenuItem("Send Message");
-        sendMessageItem.addActionListener(e -> sendMessage(applicantId, applicantName));
+        sendMessageItem.addActionListener(e -> sendMessage(applicationId, applicantName));
         menu.add(sendMessageItem);
 
         menu.show(shortlistedTable, 100, 100);
     }
 
-    private void scheduleInterview(String applicantId, String applicantName) {
+    private void scheduleInterview(String applicationId, String applicantName) {
         JDialog dialog = new JDialog(this, "Schedule Interview", true);
-        dialog.setSize(400, 300);
+        dialog.setSize(400, 350);
         dialog.setLocationRelativeTo(this);
 
         JPanel panel = new JPanel();
         panel.setLayout(new GridLayout(5, 2, 10, 10));
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        panel.add(new JLabel("Applicant:"));
-        panel.add(new JLabel(applicantName));
+        panel.add(new JLabel("Application ID:"));
+        panel.add(new JLabel(applicationId));
 
-        panel.add(new JLabel("Date:"));
+        panel.add(new JLabel("Date & Time (yyyy-MM-dd HH:mm):"));
         JTextField dateField = new JTextField();
-        dateField.setText("YYYY-MM-DD");
+        dateField.setText("2026-05-15 10:00");
         panel.add(dateField);
-
-        panel.add(new JLabel("Time:"));
-        JTextField timeField = new JTextField();
-        timeField.setText("HH:MM");
-        panel.add(timeField);
 
         panel.add(new JLabel("Location:"));
         JTextField locationField = new JTextField();
+        locationField.setText("Room 101");
         panel.add(locationField);
 
         JButton scheduleButton = new JButton("Schedule");
         scheduleButton.addActionListener(e -> {
-            String date = dateField.getText();
-            String time = timeField.getText();
+            String interviewTime = dateField.getText();
             String location = locationField.getText();
 
-            if (!date.isEmpty() && !time.isEmpty() && !location.isEmpty()) {
-                UnifiedDataStore.addInterview(applicantId, applicantName, selectedModuleId, date, time, location);
+            if (!interviewTime.isEmpty() && !location.isEmpty()) {
+                // Find applicant details from the table or applicants data
+                List<String[]> applicants = UnifiedDataStore.getAllApplicants();
+                String taId = applicantName;
+                String moduleName = selectedModuleId;
+                for (String[] a : applicants) {
+                    if (a.length >= 8 && a[0].equals(applicationId)) {
+                        taId = a[1];
+                        moduleName = a.length >= 5 ? a[4] : selectedModuleId;
+                        break;
+                    }
+                }
+
+                UnifiedDataStore.addInterview(applicationId, taId, applicantName,
+                        selectedModuleId, moduleName, interviewTime, location,
+                        currentUser.getId());
 
                 JOptionPane.showMessageDialog(dialog,
-                    "Interview scheduled for " + applicantName + " on " + date + " at " + time + " in " + location,
+                    "Interview scheduled for " + applicantName + " at " + interviewTime + " in " + location,
                     "Success", JOptionPane.INFORMATION_MESSAGE);
                 dialog.dispose();
             } else {
@@ -196,7 +211,7 @@ public class MOScheduleInterviewsUI extends JFrame {
         dialog.setVisible(true);
     }
 
-    private void sendMessage(String applicantId, String applicantName) {
+    private void sendMessage(String applicationId, String applicantName) {
         JDialog dialog = new JDialog(this, "Send Message", true);
         dialog.setSize(400, 300);
         dialog.setLocationRelativeTo(this);
@@ -218,7 +233,16 @@ public class MOScheduleInterviewsUI extends JFrame {
         sendButton.addActionListener(e -> {
             String message = messageArea.getText();
             if (!message.isEmpty()) {
-                UnifiedDataStore.addMessage(currentUser.getId(), "MO", applicantId, applicantName, selectedModuleId, message);
+                String taId = applicantName;
+                List<String[]> applicants = UnifiedDataStore.getAllApplicants();
+                for (String[] a : applicants) {
+                    if (a.length >= 8 && a[0].equals(applicationId)) {
+                        taId = a[1];
+                        break;
+                    }
+                }
+                UnifiedDataStore.addMessage("MO", currentUser.getId(), taId, applicantName,
+                        selectedModuleId, "Interview Invitation", message);
                 JOptionPane.showMessageDialog(dialog, "Message sent to " + applicantName, "Success", JOptionPane.INFORMATION_MESSAGE);
                 dialog.dispose();
             } else {

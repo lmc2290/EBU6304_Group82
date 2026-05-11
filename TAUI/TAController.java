@@ -66,15 +66,7 @@ public class TAController {
                 allJobs.add(job);
             }
         }
-
-        if (allJobs.isEmpty()) {
-            allJobs.add(new Job("J01", "Java Lab Assistant", "ECS401", "10 hours/week", "£15/hr", "1:5",
-                    "Assist students with Java lab exercises and mark weekly assignments.", false,
-                    "Lab Assistant", "Java"));
-            allJobs.add(new Job("J02", "Python Tutor", "ECS414", "8 hours/week", "£16/hr", "1:3",
-                    "Hold tutorial sessions for Python data modeling and machine learning basics.", false,
-                    "Tutor", "Python"));
-        }
+        // No fallback mock jobs — TA must only see Approved modules from modules.csv
     }
 
     public List<Job> getAllJobs() {
@@ -198,6 +190,10 @@ public class TAController {
                             localApp.setStatus(moApp[7]);
                             System.out.println("[Sync Engine] Status updated for " + moApp[3] + " -> " + moApp[7]);
                         }
+                        // Sync applicationId from MO-side so withdraw works correctly
+                        if (moApp[0] != null && !moApp[0].isEmpty()) {
+                            localApp.setApplicationId(moApp[0]);
+                        }
                         break;
                     }
                 }
@@ -227,13 +223,11 @@ public class TAController {
         }
 
         try {
+            String applicationId = "APP-" + System.currentTimeMillis();
             ApplicationRecord newRecord = new ApplicationRecord(targetJob, userId, selectedProfile, coverLetter);
+            newRecord.setApplicationId(applicationId);
             existingApps.add(newRecord);
             TADataStore.saveApplications(userApplicationsMap);
-
-            String applicationId = "APP-" + System.currentTimeMillis();
-            String skillsStr = selectedProfile.getSelectedSkills() != null ?
-                    String.join(";", selectedProfile.getSelectedSkills()) : "N/A";
 
             UnifiedDataStore.addApplicant(
                     applicationId,
@@ -248,7 +242,7 @@ public class TAController {
             EmailService.sendEmail(targetJob.getModule(), selectedProfile.getName(), targetJob.getTitle());
 
             System.out.println("=== Application Transaction Success ===");
-            System.out.println("Generated App ID: " + newRecord.getApplicationId());
+            System.out.println("Generated App ID: " + applicationId);
             return true;
 
         } catch (Exception e) {
@@ -276,6 +270,10 @@ public class TAController {
         try {
             record.setStatus("Withdrawn");
             TADataStore.saveApplications(userApplicationsMap);
+
+            // Also update UnifiedDataStore (applicants.csv)
+            String moduleCode = record.getTargetJob().getModule();
+            UnifiedDataStore.updateApplicantStatus(record.getApplicationId(), moduleCode, "Withdrawn", record.getUserId());
 
             System.out.println("=== Application Withdrawn ===");
             System.out.println("App ID: " + record.getApplicationId());

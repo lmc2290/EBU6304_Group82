@@ -16,8 +16,10 @@ public class MOStatisticsUI extends JFrame {
 
     private JLabel totalApplicantsLabel;
     private JLabel shortlistedLabel;
+    private JLabel approvedLabel;
     private JLabel rejectedLabel;
     private JLabel pendingLabel;
+    private JLabel withdrawnLabel;
 
     public MOStatisticsUI(User user) {
         this.currentUser = user;
@@ -69,8 +71,7 @@ public class MOStatisticsUI extends JFrame {
         }
 
         if (modules.isEmpty()) {
-            moduleComboBox.addItem("ECS401");
-            moduleComboBox.addItem("ECS414");
+            // No modules available
         }
 
         if (selectedModuleId != null && !selectedModuleId.isEmpty()) {
@@ -123,18 +124,22 @@ public class MOStatisticsUI extends JFrame {
     }
 
     private JPanel createSummaryCards() {
-        JPanel cardsPanel = new JPanel(new GridLayout(1, 4, 15, 15));
+        JPanel cardsPanel = new JPanel(new GridLayout(2, 3, 15, 15));
         cardsPanel.setBackground(new Color(247, 247, 247));
 
         totalApplicantsLabel = new JLabel("0");
         shortlistedLabel = new JLabel("0");
+        approvedLabel = new JLabel("0");
         rejectedLabel = new JLabel("0");
         pendingLabel = new JLabel("0");
+        withdrawnLabel = new JLabel("0");
 
         cardsPanel.add(createStatCard("Total Applicants", totalApplicantsLabel, new Color(0, 123, 255)));
-        cardsPanel.add(createStatCard("Shortlisted", shortlistedLabel, new Color(40, 167, 69)));
+        cardsPanel.add(createStatCard("Approved", approvedLabel, new Color(40, 167, 69)));
+        cardsPanel.add(createStatCard("Shortlisted", shortlistedLabel, new Color(0, 102, 204)));
         cardsPanel.add(createStatCard("Rejected", rejectedLabel, new Color(220, 53, 69)));
         cardsPanel.add(createStatCard("Pending Review", pendingLabel, new Color(255, 193, 7)));
+        cardsPanel.add(createStatCard("Withdrawn", withdrawnLabel, new Color(108, 117, 125)));
 
         return cardsPanel;
     }
@@ -187,17 +192,22 @@ public class MOStatisticsUI extends JFrame {
 
     private void refreshStatistics() {
         List<String[]> applicants = UnifiedDataStore.getAllApplicants();
-        Map<String, Integer> stats = new HashMap<>();
+        Map<String, Integer> moduleCounts = new HashMap<>();
 
         int total = 0;
         int shortlisted = 0;
         int rejected = 0;
         int pending = 0;
+        int approved = 0;
+        int withdrawn = 0;
 
         for (String[] app : applicants) {
             if (app.length >= 8 && app[3].equals(selectedModuleId)) {
                 total++;
                 String status = app[7];
+                String moduleName = app.length >= 5 ? app[4] : app[3];
+                moduleCounts.put(moduleName, moduleCounts.getOrDefault(moduleName, 0) + 1);
+
                 if ("Shortlisted".equalsIgnoreCase(status)) {
                     shortlisted++;
                 } else if ("Rejected".equalsIgnoreCase(status)) {
@@ -205,23 +215,34 @@ public class MOStatisticsUI extends JFrame {
                 } else if ("Pending".equalsIgnoreCase(status)) {
                     pending++;
                 } else if ("Approved".equalsIgnoreCase(status)) {
-                    // Approved is not counted here, it's a positive outcome
+                    approved++;
+                } else if ("Withdrawn".equalsIgnoreCase(status)) {
+                    withdrawn++;
                 }
             }
         }
 
         totalApplicantsLabel.setText(String.valueOf(total));
+        approvedLabel.setText(String.valueOf(approved));
         shortlistedLabel.setText(String.valueOf(shortlisted));
         rejectedLabel.setText(String.valueOf(rejected));
         pendingLabel.setText(String.valueOf(pending));
+        withdrawnLabel.setText(String.valueOf(withdrawn));
 
         tableModel.setRowCount(0);
 
         tableModel.addRow(new Object[]{"Total Applicants", total, "100%", "All"});
+        tableModel.addRow(new Object[]{"Approved", approved, getPercentage(approved, total), "Hired"});
         tableModel.addRow(new Object[]{"Shortlisted", shortlisted, getPercentage(shortlisted, total), "Qualified"});
-        tableModel.addRow(new Object[]{"Rejected", rejected, getPercentage(rejected, total), "Not Qualified"});
         tableModel.addRow(new Object[]{"Pending Review", pending, getPercentage(pending, total), "Under Review"});
-        tableModel.addRow(new Object[]{"Average English Level", "-", "-", getAverageEnglishLevel(applicants)});
+        tableModel.addRow(new Object[]{"Rejected", rejected, getPercentage(rejected, total), "Not Qualified"});
+        tableModel.addRow(new Object[]{"Withdrawn", withdrawn, getPercentage(withdrawn, total), "Cancelled"});
+
+        // Per-module breakdown
+        for (Map.Entry<String, Integer> entry : moduleCounts.entrySet()) {
+            tableModel.addRow(new Object[]{"Module: " + entry.getKey(), entry.getValue(),
+                    getPercentage(entry.getValue(), total), "Breakdown"});
+        }
     }
 
     private String getPercentage(int value, int total) {

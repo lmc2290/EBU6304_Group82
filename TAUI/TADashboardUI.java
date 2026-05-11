@@ -97,7 +97,13 @@ public class TADashboardUI extends DashBoardUI {
                 BorderFactory.createLineBorder(Color.GRAY), "Search & Filter", TitledBorder.LEFT, TitledBorder.TOP, new Font("Arial", Font.BOLD, 14)));
 
         filterPanel.add(new JLabel("Module:"));
-        moduleCombo = new JComboBox<>(new String[]{"All", "ECS401", "ECS414", "ECS505"});
+        java.util.List<String[]> approvedModules = LoginPage.UnifiedDataStore.getApprovedModules();
+        java.util.List<String> moduleCodes = new java.util.ArrayList<>();
+        moduleCodes.add("All");
+        for (String[] m : approvedModules) {
+            if (m.length >= 1) moduleCodes.add(m[0]);
+        }
+        moduleCombo = new JComboBox<>(moduleCodes.toArray(new String[0]));
         filterPanel.add(moduleCombo);
 
         filterPanel.add(new JLabel("Status:"));

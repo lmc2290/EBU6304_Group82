@@ -118,8 +118,8 @@ public class MOApplicantListUI extends JPanel {
 
     private JScrollPane createTablePanel() {
         String[] columns = {
-                "ID", "Name", "Course", "English Level",
-                "Completed Courses", "CV", "Status", "Action"
+                "Application ID", "TA ID", "TA Name", "Module Code",
+                "Module Name", "CV File", "Status", "Action"
         };
 
         tableModel = new DefaultTableModel(columns, 0) {
@@ -149,8 +149,8 @@ public class MOApplicantListUI extends JPanel {
         sorter = new TableRowSorter<>(tableModel);
         applicantTable.setRowSorter(sorter);
 
-        applicantTable.getColumn("CV").setCellRenderer(new ButtonRenderer("View CV", PRIMARY_BTN));
-        applicantTable.getColumn("CV").setCellEditor(new CVButtonEditor(new JCheckBox()));
+        applicantTable.getColumn("CV File").setCellRenderer(new ButtonRenderer("View CV", PRIMARY_BTN));
+        applicantTable.getColumn("CV File").setCellEditor(new CVButtonEditor(new JCheckBox()));
 
         applicantTable.getColumn("Action").setCellRenderer(new ButtonRenderer("Update Status", SECONDARY_BTN));
         applicantTable.getColumn("Action").setCellEditor(new StatusButtonEditor(new JCheckBox()));
@@ -188,11 +188,11 @@ public class MOApplicantListUI extends JPanel {
         secondRow.setBackground(CARD_BG);
 
         courseFilterBox = new JComboBox<>(new String[]{
-                "All", "Java", "Database", "OOP", "Python", "ML"
+                "All", "Pending", "Shortlisted", "Approved", "Rejected"
         });
 
         englishFilterBox = new JComboBox<>(new String[]{
-                "All", "IELTS 6.5", "IELTS 7.0", "IELTS 7.5"
+                "All"
         });
 
         nameFilterField = new JTextField(12);
@@ -214,11 +214,9 @@ public class MOApplicantListUI extends JPanel {
         });
         setLimitButton.addActionListener(e -> setModuleLimit());
 
-        firstRow.add(createLabel("Completed Course:"));
+        firstRow.add(createLabel("Status:"));
         firstRow.add(courseFilterBox);
-        firstRow.add(createLabel("English Level:"));
-        firstRow.add(englishFilterBox);
-        firstRow.add(createLabel("Name:"));
+        firstRow.add(createLabel("TA Name:"));
         firstRow.add(nameFilterField);
 
         secondRow.add(filterButton);
@@ -282,29 +280,29 @@ public class MOApplicantListUI extends JPanel {
     private void loadApplicantData() {
         tableModel.setRowCount(0);
 
-        List<String[]> applicants = UnifiedDataStore.getAllApplicants();
+        List<String[]> applicants;
+        String moId = currentUser.getMoId();
+        if (moId != null && !moId.trim().isEmpty()) {
+            applicants = UnifiedDataStore.getApplicationsByMoId(moId);
+        } else {
+            applicants = UnifiedDataStore.getAllApplicants();
+        }
 
-        System.out.println("Current MO module: " + currentUser.getModuleName());
+        System.out.println("Current MO ID: " + moId);
         System.out.println("Loaded applicants: " + applicants.size());
 
         for (String[] applicant : applicants) {
             if (applicant.length >= 8) {
-                String moduleCode = applicant[3];
-                if (currentUser.getModuleName() == null
-                        || currentUser.getModuleName().trim().isEmpty()
-                        || moduleCode.equals(currentUser.getModuleName())) {
-
-                    tableModel.addRow(new Object[]{
-                            applicant[1],
-                            applicant[2],
-                            applicant[4],
-                            applicant[5],
-                            applicant[6],
-                            "View CV",
-                            applicant[7],
-                            "Update Status"
-                    });
-                }
+                tableModel.addRow(new Object[]{
+                        applicant[0],  // Application ID (column 0)
+                        applicant[1],  // TA ID (column 1)
+                        applicant[2],  // TA Name (column 2)
+                        applicant[3],  // Module Code (column 3)
+                        applicant[4],  // Module Name (column 4)
+                        "View CV",     // CV File button
+                        applicant[7],  // Status (column 7)
+                        "Update Status" // Action button
+                });
             }
         }
 
@@ -367,18 +365,14 @@ public class MOApplicantListUI extends JPanel {
     private void applyFilters() {
         List<RowFilter<Object, Object>> filters = new ArrayList<>();
 
-        String selectedCourse = (String) courseFilterBox.getSelectedItem();
-        String selectedEnglish = (String) englishFilterBox.getSelectedItem();
+        String selectedStatus = (String) courseFilterBox.getSelectedItem();
         String keyword = nameFilterField.getText().trim();
 
-        if (!"All".equals(selectedCourse)) {
-            filters.add(RowFilter.regexFilter("(?i)" + selectedCourse, 4));
-        }
-        if (!"All".equals(selectedEnglish)) {
-            filters.add(RowFilter.regexFilter("(?i)" + selectedEnglish, 3));
+        if (!"All".equals(selectedStatus)) {
+            filters.add(RowFilter.regexFilter("(?i)" + selectedStatus, 6));
         }
         if (!keyword.isEmpty()) {
-            filters.add(RowFilter.regexFilter("(?i)" + keyword, 1));
+            filters.add(RowFilter.regexFilter("(?i)" + keyword, 2));
         }
 
         if (filters.isEmpty()) {
@@ -390,7 +384,6 @@ public class MOApplicantListUI extends JPanel {
 
     private void clearFilters() {
         courseFilterBox.setSelectedIndex(0);
-        englishFilterBox.setSelectedIndex(0);
         nameFilterField.setText("");
         sorter.setRowFilter(null);
     }
@@ -479,21 +472,21 @@ public class MOApplicantListUI extends JPanel {
             button = createStyledButton("View CV", PRIMARY_BTN, PRIMARY_BTN_HOVER);
 
             button.addActionListener(e -> {
-                String name = tableModel.getValueAt(currentRow, 1).toString();
-                String course = tableModel.getValueAt(currentRow, 2).toString();
-                String english = tableModel.getValueAt(currentRow, 3).toString();
-                String completed = tableModel.getValueAt(currentRow, 4).toString();
+                String applicationId = tableModel.getValueAt(currentRow, 0).toString();
+                String taId = tableModel.getValueAt(currentRow, 1).toString();
+                String taName = tableModel.getValueAt(currentRow, 2).toString();
+                String moduleCode = tableModel.getValueAt(currentRow, 3).toString();
+                String moduleName = tableModel.getValueAt(currentRow, 4).toString();
                 String status = tableModel.getValueAt(currentRow, 6).toString();
 
                 JOptionPane.showMessageDialog(button,
-                        "Name: " + name
-                                + "\nCourse: " + course
-                                + "\nEnglish Level: " + english
-                                + "\nCompleted Courses: " + completed
-                                + "\nStatus: " + status
-                                + "\nSkills: Communication, Teamwork, Subject Knowledge"
-                                + "\nExperience: Tutoring / Lab Support",
-                        "CV Details", JOptionPane.INFORMATION_MESSAGE);
+                        "Application ID: " + applicationId
+                                + "\nTA ID: " + taId
+                                + "\nTA Name: " + taName
+                                + "\nModule Code: " + moduleCode
+                                + "\nModule Name: " + moduleName
+                                + "\nStatus: " + status,
+                        "Application Details", JOptionPane.INFORMATION_MESSAGE);
                 fireEditingStopped();
             });
         }
@@ -520,9 +513,9 @@ public class MOApplicantListUI extends JPanel {
             button = createStyledButton("Update Status", SECONDARY_BTN, SECONDARY_BTN_HOVER);
 
             button.addActionListener(e -> {
-                String applicantId = tableModel.getValueAt(currentRow, 0).toString();
+                String applicationId = tableModel.getValueAt(currentRow, 0).toString();
                 String currentStatus = tableModel.getValueAt(currentRow, 6).toString();
-                String moduleName = currentUser.getModuleName();
+                String moduleCode = tableModel.getValueAt(currentRow, 3).toString();
 
                 String[] options = {"Pending", "Shortlisted", "Rejected", "Approved"};
                 String selected = (String) JOptionPane.showInputDialog(button,
@@ -536,8 +529,8 @@ public class MOApplicantListUI extends JPanel {
                 if (selected != null && !selected.equals(currentStatus)) {
 
                     if ("Approved".equals(selected)) {
-                        int approvedCount = UnifiedDataStore.getApprovedCountByModule(moduleName);
-                        int positionLimit = UnifiedDataStore.getModulePositionLimit(moduleName);
+                        int approvedCount = UnifiedDataStore.getApprovedCountByModule(moduleCode);
+                        int positionLimit = UnifiedDataStore.getModulePositionLimit(moduleCode);
 
                         boolean alreadyApproved = "Approved".equals(currentStatus);
 
@@ -551,7 +544,7 @@ public class MOApplicantListUI extends JPanel {
                         }
                     }
 
-                    UnifiedDataStore.updateApplicantStatus(applicantId, moduleName, selected, currentUser.getId());
+                    UnifiedDataStore.updateApplicantStatus(applicationId, moduleCode, selected, currentUser.getId());
                     tableModel.setValueAt(selected, currentRow, 6);
 
                     refreshLimitDisplay();

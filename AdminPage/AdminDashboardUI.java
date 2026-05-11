@@ -49,6 +49,7 @@ public class AdminDashboardUI extends DashBoardUI {
 
         workloadBtn.addActionListener(e -> {
             cardLayout.show(cardPanel, "WORKLOAD");
+            taControl.getUi().refreshTableData();
             taControl.getUi().refreshLimitLabels();
             taControl.getUi().repaint();
         });

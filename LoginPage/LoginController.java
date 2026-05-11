@@ -38,31 +38,20 @@ public class LoginController {
                 routeToDashboard(authenticatedUser);
 
             } else if (idNum >= 1 && idNum <= 100) {
-                // 给 MO 分配 moduleName，避免 applicant list 为空
-                String moduleName = assignModuleToMO(idNum);
-                authenticatedUser = new User(idStr, "MO", moduleName);
+                authenticatedUser = new User(idStr, "MO");
+                authenticatedUser.setMoId(idStr);
                 loginUI.showMessage("MO identity detected. Routing to MO Dashboard...");
                 routeToDashboard(authenticatedUser);
 
             } else {
                 authenticatedUser = new User(idStr, "TA");
+                authenticatedUser.setTaId(idStr);
                 loginUI.showMessage("TA (Student) identity detected. Routing to TA Dashboard...");
                 routeToDashboard(authenticatedUser);
             }
 
         } catch (NumberFormatException ex) {
             loginUI.showError("ID must be a valid number!");
-        }
-    }
-
-    /**
-     * Assigns module to MO based on ID
-     */
-    private String assignModuleToMO(int idNum) {
-        if (idNum <= 50) {
-            return "CS101";
-        } else {
-            return "CS202";
         }
     }
 

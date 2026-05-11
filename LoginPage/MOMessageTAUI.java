@@ -1,6 +1,7 @@
 package LoginPage;
 
 import java.awt.*;
+import java.util.ArrayList;
 import java.util.List;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -44,14 +45,13 @@ public class MOMessageTAUI extends JFrame {
         }
 
         if (modules.isEmpty()) {
-            moduleComboBox.addItem("ECS401");
-            moduleComboBox.addItem("ECS414");
+            // No modules available
         }
 
         if (!modules.isEmpty() && modules.get(0).length >= 1) {
             selectedModuleId = modules.get(0)[0];
         } else {
-            selectedModuleId = "ECS401";
+            selectedModuleId = "";
         }
 
         moduleComboBox.addActionListener(e -> {
@@ -117,10 +117,21 @@ public class MOMessageTAUI extends JFrame {
     private void refreshTAList() {
         tableModel.setRowCount(0);
 
-        List<String[]> approvedApplicants = UnifiedDataStore.getApprovedApplicants();
-        for (String[] applicant : approvedApplicants) {
+        // Include both Approved and Shortlisted applicants
+        List<String[]> approved = UnifiedDataStore.getApprovedApplicants();
+        List<String[]> shortlisted = UnifiedDataStore.getShortlistedApplicants();
+        List<String[]> allTargets = new ArrayList<>();
+        allTargets.addAll(approved);
+        allTargets.addAll(shortlisted);
+
+        // Deduplicate by taId
+        java.util.Set<String> seenTaIds = new java.util.HashSet<>();
+        for (String[] applicant : allTargets) {
             if (applicant.length >= 8 && applicant[3].equals(selectedModuleId)) {
                 String taId = applicant[1];
+                if (seenTaIds.contains(taId)) continue;
+                seenTaIds.add(taId);
+
                 String taName = applicant[2];
                 String email = taName.toLowerCase().replace(" ", ".") + "_" + taId.toLowerCase() + "@qmul.ac.uk";
 
@@ -173,7 +184,8 @@ public class MOMessageTAUI extends JFrame {
         sendButton.addActionListener(e -> {
             String message = messageArea.getText();
             if (!message.isEmpty()) {
-                UnifiedDataStore.addMessage(currentUser.getId(), "MO", taId, taName, selectedModuleId, message);
+                UnifiedDataStore.addMessage("MO", currentUser.getId(), taId, taName,
+                        selectedModuleId, "Message from MO", message);
                 JOptionPane.showMessageDialog(dialog, "Message sent to " + taName, "Success", JOptionPane.INFORMATION_MESSAGE);
                 dialog.dispose();
             } else {

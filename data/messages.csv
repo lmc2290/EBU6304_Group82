@@ -1,1 +1,1 @@
-messageId,senderId,senderRole,receiverId,receiverName,moduleCode,content,sendAt
+messageId,fromRole,fromId,toTaId,toTaName,moduleCode,subject,content,sentAt
