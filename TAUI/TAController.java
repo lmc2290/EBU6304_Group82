@@ -1,28 +1,23 @@
 package TAUI;
 
 import LoginPage.UnifiedDataStore;
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.*;
 
 public class TAController {
 
     private List<Job> allJobs;
-    // 保留 CV 的本地隔离管理
-    private Map<String, List<CVRecord>> userCVsMap;
 
     // ==========================================
     // 1. Profile 档案存取 (直接连接底层 CSV)
     // ==========================================
     public UserProfile getUserProfile(String userId) {
         // 直接从统一数据库读
-        return LoginPage.UnifiedDataStore.getProfileByTaId(userId);
+        return UnifiedDataStore.getProfileByTaId(userId);
     }
 
     public void saveUserProfile(String userId, UserProfile profile) {
         // 直接写进统一数据库
-        LoginPage.UnifiedDataStore.saveProfile(userId, profile);
+        UnifiedDataStore.saveProfile(userId, profile);
         System.out.println("[System] Profile data saved to UnifiedDataStore.");
     }
 
@@ -31,8 +26,6 @@ public class TAController {
     // ==========================================
     public TAController() {
         allJobs = new ArrayList<>();
-        userCVsMap = new HashMap<>();
-
         loadJobsFromModules();
         System.out.println("[System] TAController initialized. Linked to UnifiedDataStore.");
     }
@@ -98,66 +91,7 @@ public class TAController {
     }
 
     // ==========================================
-    // 3. CV 上传管理 (保持原有本地存储逻辑)
-    // ==========================================
-    public List<CVRecord> getUploadedCVs(String userId) {
-        if (userId == null || userId.isEmpty()) return new ArrayList<>();
-        return userCVsMap.computeIfAbsent(userId, k -> new ArrayList<>());
-    }
-
-    public String uploadCV(String userId, File file) {
-        if (file.length() > 5 * 1024 * 1024) {
-            return "File size exceeds the 5MB limit.";
-        }
-        String originalName = file.getName();
-        String lowerName = originalName.toLowerCase();
-        if (!lowerName.endsWith(".pdf") && !lowerName.endsWith(".docx")) {
-            return "Invalid format. Only .pdf and .docx are allowed.";
-        }
-
-        List<CVRecord> myCVs = getUploadedCVs(userId);
-        for (CVRecord cv : myCVs) {
-            if (cv.getOriginalName().equals(originalName)) {
-                return "A CV with this name already exists in your list.";
-            }
-        }
-
-        try {
-            File targetDir = new File("uploaded_cvs");
-            if (!targetDir.exists()) targetDir.mkdirs();
-
-            String extension = originalName.substring(originalName.lastIndexOf("."));
-            String baseName = originalName.substring(0, originalName.lastIndexOf("."));
-            String storedName = baseName + "_" + System.currentTimeMillis() + extension;
-
-            File targetFile = new File(targetDir, storedName);
-            Files.copy(file.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-
-            myCVs.add(new CVRecord(originalName, storedName));
-            return null;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "System Error: Failed to save file.";
-        }
-    }
-
-    public boolean deleteCV(String userId, CVRecord cvRecord) {
-        if (cvRecord == null) return false;
-        try {
-            File targetDir = new File("uploaded_cvs");
-            File fileToDelete = new File(targetDir, cvRecord.getStoredName());
-            if (fileToDelete.exists()) {
-                fileToDelete.delete();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
-        return getUploadedCVs(userId).remove(cvRecord);
-    }
-
-    // ==========================================
-    // 4. 申请流转 (Application Lifecycle)
+    // 3. 申请流转 (Application Lifecycle)
     // ==========================================
     public List<ApplicationRecord> getUserApplications(String userId) {
         List<ApplicationRecord> myApps = new ArrayList<>();
@@ -171,6 +105,7 @@ public class TAController {
             for (String[] a : csvApps) {
                 if (a.length >= 8) {
                     Job mockJob = new Job("JOB-" + a[3], a[4] + " TA", a[3], "10 hours/week", "£15/hr", "N/A", "Assist teaching for " + a[3], false, "Lab Assistant", "Java");
+                    // 索引 a[6] 存放的是 coverLetter
                     ApplicationRecord record = new ApplicationRecord(mockJob, userId, currentProfile, a[6]);
                     record.setApplicationId(a[0]); // 设置真实的 appId
                     record.setStatus(a[7]);        // 设置 MO 审核的真实状态！
@@ -211,7 +146,7 @@ public class TAController {
                     selectedProfile.getName(),
                     targetJob.getModule(),
                     targetJob.getTitle(),
-                    "Online Profile",
+                    "Online Profile", // 以前传物理文件路径的地方，现在用文字占位
                     coverLetter
             );
 
@@ -247,7 +182,7 @@ public class TAController {
     }
 
     // ==========================================
-    // 5. 智能匹配算法 (Smart Match Engine)
+    // 4. 智能匹配算法 (Smart Match Engine)
     // ==========================================
     private static class JobScore implements Comparable<JobScore> {
         Job job;
@@ -267,7 +202,7 @@ public class TAController {
     public List<Job> getRecommendedJobs(String userId) {
         UserProfile profile = getUserProfile(userId);
 
-        if (profile == null || profile.getName() == null) {
+        if (profile == null || profile.getName() == null || profile.getName().isEmpty()) {
             System.err.println("Smart Match: No profile found, returning default list.");
             return new ArrayList<>(allJobs);
         }
