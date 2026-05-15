@@ -1,13 +1,16 @@
 package LoginPage;
 
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.TableRowSorter;
+import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableCellRenderer;
-import javax.swing.table.TableRowSorter;
-import javax.swing.table.DefaultTableCellRenderer;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.stream.Collectors;
 
 public class MOApplicantListUI extends JPanel {
     private final User currentUser;
@@ -115,8 +118,8 @@ public class MOApplicantListUI extends JPanel {
 
     private JScrollPane createTablePanel() {
         String[] columns = {
-                "ID", "Name", "Course", "English Level",
-                "Completed Courses", "CV", "Status", "Action"
+                "Application ID", "TA ID", "TA Name", "Module Code",
+                "Module Name", "CV File", "Status", "Action"
         };
 
         tableModel = new DefaultTableModel(columns, 0) {
@@ -146,8 +149,8 @@ public class MOApplicantListUI extends JPanel {
         sorter = new TableRowSorter<>(tableModel);
         applicantTable.setRowSorter(sorter);
 
-        applicantTable.getColumn("CV").setCellRenderer(new ButtonRenderer("View CV", PRIMARY_BTN));
-        applicantTable.getColumn("CV").setCellEditor(new CVButtonEditor(new JCheckBox()));
+        applicantTable.getColumn("CV File").setCellRenderer(new ButtonRenderer("View CV", PRIMARY_BTN));
+        applicantTable.getColumn("CV File").setCellEditor(new CVButtonEditor(new JCheckBox()));
 
         applicantTable.getColumn("Action").setCellRenderer(new ButtonRenderer("Update Status", SECONDARY_BTN));
         applicantTable.getColumn("Action").setCellEditor(new StatusButtonEditor(new JCheckBox()));
@@ -185,11 +188,11 @@ public class MOApplicantListUI extends JPanel {
         secondRow.setBackground(CARD_BG);
 
         courseFilterBox = new JComboBox<>(new String[]{
-                "All", "Java", "Database", "OOP", "Python", "ML"
+                "All", "Pending", "Shortlisted", "Approved", "Rejected"
         });
 
         englishFilterBox = new JComboBox<>(new String[]{
-                "All", "IELTS 6.5", "IELTS 7.0", "IELTS 7.5"
+                "All"
         });
 
         nameFilterField = new JTextField(12);
@@ -211,11 +214,9 @@ public class MOApplicantListUI extends JPanel {
         });
         setLimitButton.addActionListener(e -> setModuleLimit());
 
-        firstRow.add(createLabel("Completed Course:"));
+        firstRow.add(createLabel("Status:"));
         firstRow.add(courseFilterBox);
-        firstRow.add(createLabel("English Level:"));
-        firstRow.add(englishFilterBox);
-        firstRow.add(createLabel("Name:"));
+        firstRow.add(createLabel("TA Name:"));
         firstRow.add(nameFilterField);
 
         secondRow.add(filterButton);
@@ -279,25 +280,28 @@ public class MOApplicantListUI extends JPanel {
     private void loadApplicantData() {
         tableModel.setRowCount(0);
 
-        List<Applicant> applicants = MODataStore.loadApplicants();
+        List<String[]> applicants;
+        String moId = currentUser.getMoId();
+        if (moId != null && !moId.trim().isEmpty()) {
+            applicants = UnifiedDataStore.getApplicationsByMoId(moId);
+        } else {
+            applicants = UnifiedDataStore.getAllApplicants();
+        }
 
-        System.out.println("Current MO module: " + currentUser.getModuleName());
+        System.out.println("Current MO ID: " + moId);
         System.out.println("Loaded applicants: " + applicants.size());
 
-        for (Applicant applicant : applicants) {
-            if (currentUser.getModuleName() == null
-                    || currentUser.getModuleName().trim().isEmpty()
-                    || applicant.getModuleName().equals(currentUser.getModuleName())) {
-
+        for (String[] applicant : applicants) {
+            if (applicant.length >= 8) {
                 tableModel.addRow(new Object[]{
-                        applicant.getApplicantId(),
-                        applicant.getName(),
-                        applicant.getCourse(),
-                        applicant.getEnglishLevel(),
-                        applicant.getCompletedCourses(),
-                        "View CV",
-                        applicant.getStatus(),
-                        "Update Status"
+                        applicant[0],  // Application ID (column 0)
+                        applicant[1],  // TA ID (column 1)
+                        applicant[2],  // TA Name (column 2)
+                        applicant[3],  // Module Code (column 3)
+                        applicant[4],  // Module Name (column 4)
+                        "View CV",     // CV File button
+                        applicant[7],  // Status (column 7)
+                        "Update Status" // Action button
                 });
             }
         }
@@ -325,8 +329,8 @@ public class MOApplicantListUI extends JPanel {
             return;
         }
 
-        int limit = MODataStore.getPositionLimitForModule(moduleText);
-        int approved = MODataStore.getApprovedCountForModule(moduleText);
+        int limit = UnifiedDataStore.getModulePositionLimit(moduleText);
+        int approved = UnifiedDataStore.getApprovedCountByModule(moduleText);
 
         titleLabel.setText("MO Applicant List - Module: " + moduleText);
         statsLabel.setText("Approved: " + approved + " / Limit: " + limit);
@@ -361,18 +365,14 @@ public class MOApplicantListUI extends JPanel {
     private void applyFilters() {
         List<RowFilter<Object, Object>> filters = new ArrayList<>();
 
-        String selectedCourse = (String) courseFilterBox.getSelectedItem();
-        String selectedEnglish = (String) englishFilterBox.getSelectedItem();
+        String selectedStatus = (String) courseFilterBox.getSelectedItem();
         String keyword = nameFilterField.getText().trim();
 
-        if (!"All".equals(selectedCourse)) {
-            filters.add(RowFilter.regexFilter("(?i)" + selectedCourse, 4));
-        }
-        if (!"All".equals(selectedEnglish)) {
-            filters.add(RowFilter.regexFilter("(?i)" + selectedEnglish, 3));
+        if (!"All".equals(selectedStatus)) {
+            filters.add(RowFilter.regexFilter("(?i)" + selectedStatus, 6));
         }
         if (!keyword.isEmpty()) {
-            filters.add(RowFilter.regexFilter("(?i)" + keyword, 1));
+            filters.add(RowFilter.regexFilter("(?i)" + keyword, 2));
         }
 
         if (filters.isEmpty()) {
@@ -384,7 +384,6 @@ public class MOApplicantListUI extends JPanel {
 
     private void clearFilters() {
         courseFilterBox.setSelectedIndex(0);
-        englishFilterBox.setSelectedIndex(0);
         nameFilterField.setText("");
         sorter.setRowFilter(null);
     }
@@ -393,35 +392,25 @@ public class MOApplicantListUI extends JPanel {
         String moduleName = currentUser.getModuleName();
 
         if (moduleName == null || moduleName.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(
-                    this,
+            JOptionPane.showMessageDialog(this,
                     "No module is assigned to the current MO.",
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE
-            );
+                    "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        int currentLimit = MODataStore.getPositionLimitForModule(moduleName);
+        int currentLimit = UnifiedDataStore.getModulePositionLimit(moduleName);
 
-        String input = JOptionPane.showInputDialog(
-                this,
+        String input = JOptionPane.showInputDialog(this,
                 "Enter new position limit for module " + moduleName + ":\nCurrent limit: " + currentLimit,
-                currentLimit
-        );
+                currentLimit);
 
-        if (input == null) {
-            return;
-        }
+        if (input == null) return;
 
         input = input.trim();
         if (input.isEmpty()) {
-            JOptionPane.showMessageDialog(
-                    this,
+            JOptionPane.showMessageDialog(this,
                     "Limit cannot be empty.",
-                    "Warning",
-                    JOptionPane.WARNING_MESSAGE
-            );
+                    "Warning", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
@@ -429,33 +418,24 @@ public class MOApplicantListUI extends JPanel {
             int newLimit = Integer.parseInt(input);
 
             if (newLimit <= 0) {
-                JOptionPane.showMessageDialog(
-                        this,
+                JOptionPane.showMessageDialog(this,
                         "Limit must be greater than 0.",
-                        "Warning",
-                        JOptionPane.WARNING_MESSAGE
-                );
+                        "Warning", JOptionPane.WARNING_MESSAGE);
                 return;
             }
 
-            MODataStore.updateModulePositionLimit(moduleName, newLimit);
+            UnifiedDataStore.updateModulePositionLimit(moduleName, newLimit);
 
-            JOptionPane.showMessageDialog(
-                    this,
+            JOptionPane.showMessageDialog(this,
                     "Position limit for module " + moduleName + " updated to " + newLimit + ".",
-                    "Success",
-                    JOptionPane.INFORMATION_MESSAGE
-            );
+                    "Success", JOptionPane.INFORMATION_MESSAGE);
 
             refreshLimitDisplay();
 
         } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(
-                    this,
+            JOptionPane.showMessageDialog(this,
                     "Please enter a valid integer.",
-                    "Invalid Input",
-                    JOptionPane.ERROR_MESSAGE
-            );
+                    "Invalid Input", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -476,8 +456,7 @@ public class MOApplicantListUI extends JPanel {
         @Override
         public Component getTableCellRendererComponent(
                 JTable table, Object value, boolean isSelected,
-                boolean hasFocus, int row, int column
-        ) {
+                boolean hasFocus, int row, int column) {
             setText(value == null ? "Button" : value.toString());
             setBackground(buttonColor);
             return this;
@@ -493,32 +472,28 @@ public class MOApplicantListUI extends JPanel {
             button = createStyledButton("View CV", PRIMARY_BTN, PRIMARY_BTN_HOVER);
 
             button.addActionListener(e -> {
-                String name = tableModel.getValueAt(currentRow, 1).toString();
-                String course = tableModel.getValueAt(currentRow, 2).toString();
-                String english = tableModel.getValueAt(currentRow, 3).toString();
-                String completed = tableModel.getValueAt(currentRow, 4).toString();
+                String applicationId = tableModel.getValueAt(currentRow, 0).toString();
+                String taId = tableModel.getValueAt(currentRow, 1).toString();
+                String taName = tableModel.getValueAt(currentRow, 2).toString();
+                String moduleCode = tableModel.getValueAt(currentRow, 3).toString();
+                String moduleName = tableModel.getValueAt(currentRow, 4).toString();
                 String status = tableModel.getValueAt(currentRow, 6).toString();
 
-                JOptionPane.showMessageDialog(
-                        button,
-                        "Name: " + name
-                                + "\nCourse: " + course
-                                + "\nEnglish Level: " + english
-                                + "\nCompleted Courses: " + completed
-                                + "\nStatus: " + status
-                                + "\nSkills: Communication, Teamwork, Subject Knowledge"
-                                + "\nExperience: Tutoring / Lab Support",
-                        "CV Details",
-                        JOptionPane.INFORMATION_MESSAGE
-                );
+                JOptionPane.showMessageDialog(button,
+                        "Application ID: " + applicationId
+                                + "\nTA ID: " + taId
+                                + "\nTA Name: " + taName
+                                + "\nModule Code: " + moduleCode
+                                + "\nModule Name: " + moduleName
+                                + "\nStatus: " + status,
+                        "Application Details", JOptionPane.INFORMATION_MESSAGE);
                 fireEditingStopped();
             });
         }
 
         @Override
         public Component getTableCellEditorComponent(
-                JTable table, Object value, boolean isSelected, int row, int column
-        ) {
+                JTable table, Object value, boolean isSelected, int row, int column) {
             currentRow = table.convertRowIndexToModel(row);
             return button;
         }
@@ -538,54 +513,44 @@ public class MOApplicantListUI extends JPanel {
             button = createStyledButton("Update Status", SECONDARY_BTN, SECONDARY_BTN_HOVER);
 
             button.addActionListener(e -> {
-                String applicantId = tableModel.getValueAt(currentRow, 0).toString();
+                String applicationId = tableModel.getValueAt(currentRow, 0).toString();
                 String currentStatus = tableModel.getValueAt(currentRow, 6).toString();
+                String moduleCode = tableModel.getValueAt(currentRow, 3).toString();
 
                 String[] options = {"Pending", "Shortlisted", "Rejected", "Approved"};
-                String selected = (String) JOptionPane.showInputDialog(
-                        button,
+                String selected = (String) JOptionPane.showInputDialog(button,
                         "Select status:",
                         "Update Status",
                         JOptionPane.PLAIN_MESSAGE,
                         null,
                         options,
-                        currentStatus
-                );
+                        currentStatus);
 
                 if (selected != null && !selected.equals(currentStatus)) {
 
                     if ("Approved".equals(selected)) {
-                        int approvedCount = MODataStore.getApprovedCountForModule(currentUser.getModuleName());
-                        int positionLimit = MODataStore.getPositionLimitForModule(currentUser.getModuleName());
+                        int approvedCount = UnifiedDataStore.getApprovedCountByModule(moduleCode);
+                        int positionLimit = UnifiedDataStore.getModulePositionLimit(moduleCode);
 
                         boolean alreadyApproved = "Approved".equals(currentStatus);
 
                         if (!alreadyApproved && approvedCount >= positionLimit) {
-                            JOptionPane.showMessageDialog(
-                                    button,
+                            JOptionPane.showMessageDialog(button,
                                     "No more positions available for this module.\n"
                                             + "Approved: " + approvedCount + " / Limit: " + positionLimit,
-                                    "Approval Limit Reached",
-                                    JOptionPane.WARNING_MESSAGE
-                            );
+                                    "Approval Limit Reached", JOptionPane.WARNING_MESSAGE);
                             fireEditingStopped();
                             return;
                         }
                     }
 
-                    MODataStore.updateApplicantStatus(
-                            applicantId,
-                            currentUser.getModuleName(),
-                            selected
-                    );
+                    UnifiedDataStore.updateApplicantStatus(applicationId, moduleCode, selected, currentUser.getId());
                     tableModel.setValueAt(selected, currentRow, 6);
 
                     refreshLimitDisplay();
 
-                    JOptionPane.showMessageDialog(
-                            button,
-                            "Status updated successfully."
-                    );
+                    JOptionPane.showMessageDialog(button,
+                            "Status updated successfully.");
                 }
 
                 fireEditingStopped();
@@ -594,8 +559,7 @@ public class MOApplicantListUI extends JPanel {
 
         @Override
         public Component getTableCellEditorComponent(
-                JTable table, Object value, boolean isSelected, int row, int column
-        ) {
+                JTable table, Object value, boolean isSelected, int row, int column) {
             currentRow = table.convertRowIndexToModel(row);
             return button;
         }
@@ -610,8 +574,7 @@ public class MOApplicantListUI extends JPanel {
         @Override
         public Component getTableCellRendererComponent(
                 JTable table, Object value, boolean isSelected,
-                boolean hasFocus, int row, int column
-        ) {
+                boolean hasFocus, int row, int column) {
             Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 
             if (!isSelected) {

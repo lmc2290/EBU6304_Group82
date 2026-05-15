@@ -1,85 +1,79 @@
 package TAUI;
 
+import LoginPage.UnifiedDataStore;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-/**
- * Control Class: TA Controller
- * Handles the core business logic, data routing, and persistence (mock database)
- * for the Teaching Assistant application system. It acts as the central hub between
- * UI components and the underlying data entities.
- * * @version 2.0 (Updated with US-07 & US-08 Application Management Architecture)
- */
 public class TAController {
 
-    // Central repository for all available job postings
     private List<Job> allJobs;
-
-    // [Feature US-03]: Data Isolation for CVs.
-    // Key: userId, Value: List of CVRecords uploaded by that user.
+    // 保留 CV 的本地隔离管理
     private Map<String, List<CVRecord>> userCVsMap;
 
-    // [Feature US-07 & US-08]: Data Isolation for Applications.
-    // Key: userId, Value: List of ApplicationRecords submitted by that user.
-    private Map<String, List<ApplicationRecord>> userApplicationsMap;
-
-    /**
-     * Default constructor. Initializes the data structures and populates the
-     * system with mock job data for demonstration purposes.
-     */
-    // 在 TAController 类中修改
-    private Map<String, UserProfile> userProfileMap = new HashMap<>();
-
+    // ==========================================
+    // 1. Profile 档案存取 (直接连接底层 CSV)
+    // ==========================================
     public UserProfile getUserProfile(String userId) {
-        // 如果没有档案，返回一个空对象避免空指针
-        return userProfileMap.getOrDefault(userId, new UserProfile());
+        // 直接从统一数据库读
+        return LoginPage.UnifiedDataStore.getProfileByTaId(userId);
     }
 
     public void saveUserProfile(String userId, UserProfile profile) {
-        userProfileMap.put(userId, profile);
-        // [核心修改]：每次修改档案后，立即保存到 TXT
-        TADataStore.saveProfiles(userProfileMap);
-        System.out.println("[System] Profile data saved to ta_profiles.txt.");
+        // 直接写进统一数据库
+        LoginPage.UnifiedDataStore.saveProfile(userId, profile);
+        System.out.println("[System] Profile data saved to UnifiedDataStore.");
     }
+
+    // ==========================================
+    // 2. 初始化与岗位加载 (Constructor & Jobs)
+    // ==========================================
     public TAController() {
         allJobs = new ArrayList<>();
+        userCVsMap = new HashMap<>();
 
-        // 初始化岗位数据 (Mock Database)
-        allJobs.add(new Job("J01", "Java Lab Assistant", "ECS401", "10 hours/week", "£15/hr", "1:5",
-                "Assist students with Java lab exercises and mark weekly assignments.", false,
-                "Lab Assistant", "Java"));
-
-        allJobs.add(new Job("J02", "Python Tutor", "ECS414", "8 hours/week", "£16/hr", "1:3",
-                "Hold tutorial sessions for Python data modeling and machine learning basics.", false,
-                "Tutor", "Python"));
-
-        allJobs.add(new Job("J03", "Signal Processing Grader", "ECS505", "15 hours/week", "£14/hr", "1:10",
-                "Grade MATLAB scripts for communication systems and signal processing assignments.", true,
-                "Grader", "MATLAB"));
-
-        // [核心修改]：程序启动时，从本地 TXT 文件加载数据！
-        userProfileMap = TADataStore.loadProfiles();
-        userApplicationsMap = TADataStore.loadApplications(allJobs, userProfileMap);
-        System.out.println("[System] Data successfully loaded from local text files.");
+        loadJobsFromModules();
+        System.out.println("[System] TAController initialized. Linked to UnifiedDataStore.");
     }
 
+    private void loadJobsFromModules() {
+        allJobs.clear();
+        List<String[]> approvedModules = UnifiedDataStore.getApprovedModules();
 
-    // ==========================================
-    // Core Job Retrieval and Filtering Logic
-    // ==========================================
+        for (String[] module : approvedModules) {
+            if (module.length >= 5) {
+                String moduleCode = module[0];
+                String moduleName = module[1];
+                int requiredTas = 0;
+                try {
+                    requiredTas = Integer.parseInt(module[3]);
+                } catch (NumberFormatException e) {
+                    requiredTas = 1;
+                }
+
+                Job job = new Job(
+                        "JOB-" + moduleCode,
+                        moduleName + " TA",
+                        moduleCode,
+                        "10 hours/week",
+                        "£15/hr",
+                        "1:" + Math.max(3, requiredTas * 2),
+                        "Assist in lab sessions and answer student questions",
+                        false,
+                        "Lab Assistant",
+                        "Java"
+                );
+                allJobs.add(job);
+            }
+        }
+    }
 
     public List<Job> getAllJobs() {
+        loadJobsFromModules();
         return allJobs;
     }
 
-    /**
-     * Filters the central job list based on multiple criteria provided by the UI.
-     */
     public List<Job> filterJobs(String module, String status, String jobType, String skills, String keyword) {
         List<Job> filtered = new ArrayList<>();
 
@@ -104,13 +98,8 @@ public class TAController {
     }
 
     // ==========================================
-    // US-03: CV Management Logic (User Isolated)
+    // 3. CV 上传管理 (保持原有本地存储逻辑)
     // ==========================================
-
-    /**
-     * Retrieves the CV list for a specific user.
-     * Creates an empty list if the user has no uploaded CVs yet to prevent NullPointerExceptions.
-     */
     public List<CVRecord> getUploadedCVs(String userId) {
         if (userId == null || userId.isEmpty()) return new ArrayList<>();
         return userCVsMap.computeIfAbsent(userId, k -> new ArrayList<>());
@@ -120,7 +109,6 @@ public class TAController {
         if (file.length() > 5 * 1024 * 1024) {
             return "File size exceeds the 5MB limit.";
         }
-
         String originalName = file.getName();
         String lowerName = originalName.toLowerCase();
         if (!lowerName.endsWith(".pdf") && !lowerName.endsWith(".docx")) {
@@ -128,7 +116,6 @@ public class TAController {
         }
 
         List<CVRecord> myCVs = getUploadedCVs(userId);
-
         for (CVRecord cv : myCVs) {
             if (cv.getOriginalName().equals(originalName)) {
                 return "A CV with this name already exists in your list.";
@@ -137,21 +124,17 @@ public class TAController {
 
         try {
             File targetDir = new File("uploaded_cvs");
-            if (!targetDir.exists()) {
-                targetDir.mkdirs();
-            }
+            if (!targetDir.exists()) targetDir.mkdirs();
 
             String extension = originalName.substring(originalName.lastIndexOf("."));
             String baseName = originalName.substring(0, originalName.lastIndexOf("."));
             String storedName = baseName + "_" + System.currentTimeMillis() + extension;
 
             File targetFile = new File(targetDir, storedName);
-
             Files.copy(file.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
             myCVs.add(new CVRecord(originalName, storedName));
             return null;
-
         } catch (Exception e) {
             e.printStackTrace();
             return "System Error: Failed to save file.";
@@ -160,201 +143,112 @@ public class TAController {
 
     public boolean deleteCV(String userId, CVRecord cvRecord) {
         if (cvRecord == null) return false;
-
         try {
             File targetDir = new File("uploaded_cvs");
             File fileToDelete = new File(targetDir, cvRecord.getStoredName());
-
             if (fileToDelete.exists()) {
-                boolean deleted = fileToDelete.delete();
-                if (!deleted) {
-                    System.err.println("Failed to delete physical file: " + cvRecord.getStoredName());
-                }
+                fileToDelete.delete();
             }
         } catch (Exception e) {
             e.printStackTrace();
             return false;
         }
-
-        List<CVRecord> myCVs = getUploadedCVs(userId);
-        return myCVs.remove(cvRecord);
+        return getUploadedCVs(userId).remove(cvRecord);
     }
 
     // ==========================================
-    // US-07 & US-08: Application Lifecycle Management
+    // 4. 申请流转 (Application Lifecycle)
     // ==========================================
-
-    /**
-     * Retrieves the complete list of job applications for a specific user.
-     * [Feature Task 4]: Synchronizes status with MO DataStore dynamically.
-     */
     public List<ApplicationRecord> getUserApplications(String userId) {
-        if (userId == null || userId.trim().isEmpty()) {
-            return new ArrayList<>();
-        }
-
-        List<ApplicationRecord> myApps = userApplicationsMap.computeIfAbsent(userId, k -> new ArrayList<>());
-
-        boolean dataChanged = false;
+        List<ApplicationRecord> myApps = new ArrayList<>();
+        if (userId == null || userId.trim().isEmpty()) return myApps;
 
         try {
-            // 1. 调用之前集成的桥梁，直接读取 MO 端的最新申请列表 (CSV)
-            List<LoginPage.Applicant> moApplicants = LoginPage.MODataStore.loadApplicants();
+            // 直接从统一数据库读取该 TA 的所有申请
+            List<String[]> csvApps = UnifiedDataStore.getApplicationsByTaId(userId);
+            UserProfile currentProfile = getUserProfile(userId);
 
-            // 2. 遍历本地当前 TA 的所有申请记录
-            for (ApplicationRecord localApp : myApps) {
-                // 如果 TA 已经主动撤回 (Withdrawn)，则忽略 MO 的状态，保持撤回
-                if (localApp.getStatus().equalsIgnoreCase("Withdrawn")) {
-                    continue;
-                }
-
-                // 3. 在 MO 的数据库里寻找对应的记录 (通过 UserId 和 Module 交叉匹配)
-                for (LoginPage.Applicant moApp : moApplicants) {
-                    if (moApp.getApplicantId().equals(userId) &&
-                            moApp.getModuleName().equals(localApp.getTargetJob().getModule())) {
-
-                        // 4. 核心比对：如果发现 MO 那边的状态跟本地不一样 (比如变成了 Approved/Rejected)
-                        if (!localApp.getStatus().equals(moApp.getStatus())) {
-                            localApp.setStatus(moApp.getStatus()); // 更新本地状态
-                            dataChanged = true;
-                            System.out.println("[Sync Engine] Status updated for " + moApp.getModuleName() + " -> " + moApp.getStatus());
-                        }
-                        break; // 匹配到记录后跳出内层循环
-                    }
+            for (String[] a : csvApps) {
+                if (a.length >= 8) {
+                    Job mockJob = new Job("JOB-" + a[3], a[4] + " TA", a[3], "10 hours/week", "£15/hr", "N/A", "Assist teaching for " + a[3], false, "Lab Assistant", "Java");
+                    ApplicationRecord record = new ApplicationRecord(mockJob, userId, currentProfile, a[6]);
+                    record.setApplicationId(a[0]); // 设置真实的 appId
+                    record.setStatus(a[7]);        // 设置 MO 审核的真实状态！
+                    myApps.add(record);
                 }
             }
         } catch (Exception e) {
-            System.err.println("[Sync Error] Failed to sync with MO DataStore: " + e.getMessage());
+            System.err.println("[Sync Error] Failed to read from UnifiedDataStore: " + e.getMessage());
         }
-
-        // 5. 如果发现数据有变动，调用队友新写的底层保存引擎写入本地文件
-        if (dataChanged) {
-            System.out.println("[DataStore] Changes detected, triggering local file save...");
-            // ⚠️ 等你拉取了队友的代码后，把下面这行的注释解开，并换成她写的保存方法：
-            // TADataStore.saveApplications(userApplicationsMap);
-        }
-        // =========================================================
 
         return myApps;
     }
 
-
     public boolean submitApplication(Job targetJob, String userId, UserProfile selectedProfile, String coverLetter) {
         if (targetJob == null || userId == null || selectedProfile == null) {
-            System.err.println("Validation Error: Missing critical application data.");
             return false;
         }
 
+        // 查重逻辑
         List<ApplicationRecord> existingApps = getUserApplications(userId);
         for (ApplicationRecord app : existingApps) {
-            if (app.getTargetJob().getId().equals(targetJob.getId())) {
+            if (app.getTargetJob().getModule().equals(targetJob.getModule())) {
                 String currentStatus = app.getStatus();
-                if (!currentStatus.equals("Withdrawn") && !currentStatus.equals("Rejected")) {
-                    System.err.println("Duplicate Error: User already has an active application for this job.");
+                if (!currentStatus.equalsIgnoreCase("Withdrawn") && !currentStatus.equalsIgnoreCase("Rejected")) {
+                    System.err.println("Duplicate Error: Active application exists.");
                     return false;
                 }
             }
         }
 
         try {
-            ApplicationRecord newRecord = new ApplicationRecord(targetJob, userId, selectedProfile, coverLetter);
-            existingApps.add(newRecord); // 存入 TA 自己的内存中
-            TADataStore.saveApplications(userApplicationsMap);
+            String applicationId = "APP-" + System.currentTimeMillis();
 
-            // =========================================================
-            // 🚀 [CROSS-TEAM INTEGRATION]: 将数据写入 MO 组的 CSV 数据库
-            // =========================================================
-            try {
-                // 1. 读取 MO 组现有的 CSV 数据
-                List<LoginPage.Applicant> moApplicants = LoginPage.MODataStore.loadApplicants();
+            // 直接交由统一数据库写入 applicants.csv
+            UnifiedDataStore.addApplicant(
+                    applicationId,
+                    userId,
+                    selectedProfile.getName(),
+                    targetJob.getModule(),
+                    targetJob.getTitle(),
+                    "Online Profile",
+                    coverLetter
+            );
 
-                // 2. 将 TA 的 UserProfile 转换成 MO 认识的 Applicant 格式
-                String skillsStr = selectedProfile.getSelectedSkills() != null ? String.join(";", selectedProfile.getSelectedSkills()) : "N/A";
-
-                LoginPage.Applicant moFormatApplicant = new LoginPage.Applicant(
-                        userId,
-                        selectedProfile.getName(),
-                        targetJob.getModule(),
-                        selectedProfile.getCollege(),
-                        "Not Specified",
-                        skillsStr,
-                        "Online Profile",
-                        "Pending"
-                );
-
-                // 3. 追加并保存回 MO 的 CSV 文件
-                moApplicants.add(moFormatApplicant);
-                LoginPage.MODataStore.saveApplicants(moApplicants);
-                System.out.println("[Data Bridge] Successfully pushed data to MO CSV DataStore.");
-
-            } catch (Exception ex) {
-                System.err.println("[Data Bridge] Failed to connect to MO DataStore: " + ex.getMessage());
-            }
-
-            // =========================================================
-            // 📧 [US-08 FEATURE]: 发送模拟邮件给 MO
-            // =========================================================
             EmailService.sendEmail(targetJob.getModule(), selectedProfile.getName(), targetJob.getTitle());
 
             System.out.println("=== Application Transaction Success ===");
-            System.out.println("Generated App ID: " + newRecord.getApplicationId());
             return true;
-
         } catch (Exception e) {
-            System.err.println("System Error: Failed to process application record.");
             e.printStackTrace();
             return false;
         }
     }
-    /**
-     * [Feature US-07]: Withdraw Application Logic
-     * Processes the withdrawal request for a specific application record.
-     * Implements status constraints to prevent withdrawing applications that
-     * are already finalized (e.g., Hired, Rejected) or already withdrawn.
-     * * @param record The ApplicationRecord to be withdrawn.
-     * @return boolean True if withdrawal was successful, false if constrained or null.
-     */
+
     public boolean withdrawApplication(ApplicationRecord record) {
-        // 1. Defensive null check
-        if (record == null) {
-            System.err.println("Withdrawal Error: Record is null.");
-            return false;
-        }
+        if (record == null) return false;
 
         String currentStatus = record.getStatus();
-
-        // 2. State Machine Validation (US-07 AC4)
-        // Cannot withdraw if the decision has already been made or already withdrawn.
-        if (currentStatus.equalsIgnoreCase("Hired") ||
-                currentStatus.equalsIgnoreCase("Rejected") ||
-                currentStatus.equalsIgnoreCase("Withdrawn")) {
-            System.err.println("Withdrawal Blocked: Current status '" + currentStatus + "' does not allow withdrawal.");
+        if (currentStatus.equalsIgnoreCase("Hired") || currentStatus.equalsIgnoreCase("Rejected") || currentStatus.equalsIgnoreCase("Withdrawn")) {
             return false;
         }
 
         try {
-            // 3. Execute State Change (US-07 AC3)
-            record.setStatus("Withdrawn");
-            TADataStore.saveApplications(userApplicationsMap);
+            // 直接更新统一数据库的状态
+            String moduleCode = record.getTargetJob().getModule();
+            UnifiedDataStore.updateApplicantStatus(record.getApplicationId(), moduleCode, "Withdrawn", record.getUserId());
 
-            // Log transaction for audit purposes
             System.out.println("=== Application Withdrawn ===");
-            System.out.println("App ID: " + record.getApplicationId());
-            System.out.println("New Status: " + record.getStatus());
-            System.out.println("=============================");
-
             return true;
         } catch (Exception e) {
-            System.err.println("System Error during application withdrawal.");
             e.printStackTrace();
             return false;
         }
     }
-    //smart match
-    /**
-     * Nested inner class to hold a Job and its calculated compatibility score.
-     * Implements Comparable to allow easy sorting by score in descending order.
-     */
+
+    // ==========================================
+    // 5. 智能匹配算法 (Smart Match Engine)
+    // ==========================================
     private static class JobScore implements Comparable<JobScore> {
         Job job;
         int score;
@@ -366,21 +260,13 @@ public class TAController {
 
         @Override
         public int compareTo(JobScore other) {
-            // Descending order: highest score first
             return Integer.compare(other.score, this.score);
         }
     }
 
-    /**
-     * Core Algorithm: Calculates and sorts all available jobs based on the user's profile.
-     * Uses a weighted scoring system based on core skills, other skills, and experience keywords.
-     * * @param userId The ID of the current user.
-     * @return A sorted List of Jobs from most recommended to least recommended.
-     */
     public List<Job> getRecommendedJobs(String userId) {
         UserProfile profile = getUserProfile(userId);
 
-        // Defensive check: If profile is empty, just return the default list
         if (profile == null || profile.getName() == null) {
             System.err.println("Smart Match: No profile found, returning default list.");
             return new ArrayList<>(allJobs);
@@ -393,49 +279,39 @@ public class TAController {
             scoredJobs.add(new JobScore(job, currentScore));
         }
 
-        // Sort the list based on the compareTo method (descending score)
         java.util.Collections.sort(scoredJobs);
 
-        // Extract the sorted Job objects back into a standard list
         List<Job> recommendedList = new ArrayList<>();
         for (JobScore js : scoredJobs) {
-            System.out.println("Match Score for [" + js.job.getTitle() + "]: " + js.score); // Console log for debugging
             recommendedList.add(js.job);
         }
 
         return recommendedList;
     }
 
-    /**
-     * Helper method to compute the weighted score for a single job against a profile.
-     */
     private int calculateMatchScore(Job job, UserProfile profile) {
         int score = 0;
         String requiredSkill = job.getRequiredSkill().toLowerCase();
 
-        // 1. Core Skills Match (Weight: +50)
         if (profile.getSelectedSkills() != null) {
             for (String userSkill : profile.getSelectedSkills()) {
                 if (userSkill.toLowerCase().contains(requiredSkill) || requiredSkill.contains(userSkill.toLowerCase())) {
                     score += 50;
-                    break; // Max 50 points from core skills to prevent score inflation
+                    break;
                 }
             }
         }
 
-        // 2. Other Skills Match (Weight: +30)
         String otherSkills = profile.getOtherSkills();
         if (otherSkills != null && otherSkills.toLowerCase().contains(requiredSkill)) {
             score += 30;
         }
 
-        // 3. Experience Keyword Match (Weight: +20)
         String experience = profile.getExperience();
         if (experience != null && experience.toLowerCase().contains(requiredSkill)) {
             score += 20;
         }
 
-        // 4. Status Penalty: Deprioritize closed jobs (Penalty: -100)
         if (job.isExpired()) {
             score -= 100;
         }

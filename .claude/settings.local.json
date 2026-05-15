@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(javac -encoding UTF-8 -d out -sourcepath . LoginPage/*.java AdminPage/*.java TAUI/*.java)"
+    ]
+  }
+}

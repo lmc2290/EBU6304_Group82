@@ -106,6 +106,13 @@ public class MODashboardUI extends DashBoardUI {
                 () -> openPanelInFrame("Message TA", new MOMessageTAUI(currentUser))
         ));
 
+        gridPanel.add(createFeatureCard(
+                "View Statistics",
+                "View application and TA recruitment statistics",
+                "VS",
+                () -> openPanelInFrame("View Statistics", new MOStatisticsUI(currentUser))
+        ));
+
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.gridy = 0;
@@ -228,7 +235,6 @@ public class MODashboardUI extends DashBoardUI {
         } else if (panel instanceof JFrame) {
             JFrame frame = (JFrame) panel;
             frame.setTitle(title);
-            frame.setSize(800, 600);
             frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
             frame.setLocationRelativeTo(this);
             frame.setVisible(true);
