@@ -21,37 +21,19 @@ public class LoginController {
      * Processes the login attempt.
      */
     public void authenticate(String idStr, String password) {
-        // Form null/empty check
         if (idStr.isEmpty() || password.isEmpty()) {
             loginUI.showError("Please enter both ID and Password!");
             return;
         }
 
-        try {
-            int idNum = Integer.parseInt(idStr);
-            User authenticatedUser;
+        // 调用真实数据
+        User authenticatedUser = UnifiedDataStore.authenticateUser(idStr, password);
 
-            // Identity verification logic & Entity creation -- detail can be changed
-            if (idNum == 0) {
-                authenticatedUser = new User(idStr, "Admin");
-                loginUI.showMessage("Admin identity detected. Routing to Admin Dashboard...");
-                routeToDashboard(authenticatedUser);
-
-            } else if (idNum >= 1 && idNum <= 100) {
-                authenticatedUser = new User(idStr, "MO");
-                authenticatedUser.setMoId(idStr);
-                loginUI.showMessage("MO identity detected. Routing to MO Dashboard...");
-                routeToDashboard(authenticatedUser);
-
-            } else {
-                authenticatedUser = new User(idStr, "TA");
-                authenticatedUser.setTaId(idStr);
-                loginUI.showMessage("TA (Student) identity detected. Routing to TA Dashboard...");
-                routeToDashboard(authenticatedUser);
-            }
-
-        } catch (NumberFormatException ex) {
-            loginUI.showError("ID must be a valid number!");
+        if (authenticatedUser != null) {
+            loginUI.showMessage(authenticatedUser.getRole() + " identity authenticated. Routing to Dashboard...");
+            routeToDashboard(authenticatedUser);
+        } else {
+            loginUI.showError("Invalid ID or Password! Please try again.");
         }
     }
 

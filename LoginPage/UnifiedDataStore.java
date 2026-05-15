@@ -15,6 +15,8 @@ public class UnifiedDataStore {
     private static final String APPLICANTS_FILE = DATA_DIR + File.separator + "applicants.csv";
     private static final String INTERVIEWS_FILE = DATA_DIR + File.separator + "interviews.csv";
     private static final String MESSAGES_FILE = DATA_DIR + File.separator + "messages.csv";
+    private static final String USERS_FILE = DATA_DIR + File.separator + "users.csv";
+    private static final String PROFILES_FILE = DATA_DIR + File.separator + "ta_profiles.csv";
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -51,6 +53,17 @@ public class UnifiedDataStore {
                 Files.write(Paths.get(MESSAGES_FILE),
                     List.of("messageId,fromRole,fromId,toTaId,toTaName,moduleCode,subject,content,sentAt"),
                     StandardCharsets.UTF_8, StandardOpenOption.CREATE);
+            }
+            if (!Files.exists(Paths.get(USERS_FILE))) {
+                Files.write(Paths.get(USERS_FILE),
+                        List.of("userId,password,role", "admin,admin123,Admin", "10,ta123,TA", "60,mo123,MO"),
+                        StandardCharsets.UTF_8, StandardOpenOption.CREATE);
+            }
+
+            if (!Files.exists(Paths.get(PROFILES_FILE))) {
+                Files.write(Paths.get(PROFILES_FILE),
+                        List.of("taId,name,gender,grade,college,skills,otherSkills,experience,coverLetterTemplate"),
+                        StandardCharsets.UTF_8, StandardOpenOption.CREATE);
             }
         } catch (IOException e) {
             System.err.println("Failed to initialize data files: " + e.getMessage());
@@ -433,5 +446,86 @@ public class UnifiedDataStore {
             }
         }
         saveModules(modules);
+    }
+    // ==================== TASK 1: USER & PROFILE OPERATIONS (Added by TA) ====================
+
+    public static LoginPage.User authenticateUser(String userId, String password) {
+        ensureDataFilesExist();
+        try {
+            List<String> lines = Files.readAllLines(Paths.get(USERS_FILE));
+            for (int i = 1; i < lines.size(); i++) {
+                String[] parts = lines.get(i).split(",");
+                if (parts.length >= 3 && parts[0].equals(userId) && parts[1].equals(password)) {
+                    String role = parts[2];
+                    String module = role.equals("MO") ? "CS101" : "";
+                    return new LoginPage.User(userId, role, module);
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Failed to authenticate user: " + e.getMessage());
+        }
+        return null;
+    }
+
+    public static TAUI.UserProfile getProfileByTaId(String taId) {
+        ensureDataFilesExist();
+        TAUI.UserProfile profile = new TAUI.UserProfile();
+        try {
+            List<String> lines = Files.readAllLines(Paths.get(PROFILES_FILE));
+            for (int i = 1; i < lines.size(); i++) {
+                String[] parts = lines.get(i).split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
+                if (parts.length >= 9 && parts[0].equals(taId)) {
+                    profile.setName(parts[1].replace("\"", ""));
+                    profile.setGender(parts[2].replace("\"", ""));
+                    profile.setGrade(parts[3].replace("\"", ""));
+                    profile.setCollege(parts[4].replace("\"", ""));
+                    String skillsStr = parts[5].replace("\"", "");
+                    if (!skillsStr.isEmpty()) {
+                        profile.setSelectedSkills(new ArrayList<>(Arrays.asList(skillsStr.split(";"))));
+                    }
+                    profile.setOtherSkills(parts[6].replace("\"", ""));
+                    profile.setExperience(parts[7].replace("\"", ""));
+                    profile.setCoverLetterTemplate(parts[8].replace("\"", ""));
+                    break;
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Failed to load profile: " + e.getMessage());
+        }
+        return profile;
+    }
+
+    public static void saveProfile(String taId, TAUI.UserProfile profile) {
+        ensureDataFilesExist();
+        List<String> lines = new ArrayList<>();
+        boolean found = false;
+        try {
+            String skillsStr = profile.getSelectedSkills() != null ? String.join(";", profile.getSelectedSkills()) : "";
+            String newLine = String.format("%s,\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"",
+                    taId,
+                    profile.getName() != null ? profile.getName() : "",
+                    profile.getGender() != null ? profile.getGender() : "",
+                    profile.getGrade() != null ? profile.getGrade() : "",
+                    profile.getCollege() != null ? profile.getCollege() : "",
+                    skillsStr,
+                    profile.getOtherSkills() != null ? profile.getOtherSkills() : "",
+                    profile.getExperience() != null ? profile.getExperience().replace("\"", "\"\"") : "",
+                    profile.getCoverLetterTemplate() != null ? profile.getCoverLetterTemplate().replace("\"", "\"\"") : ""
+            );
+
+            List<String> existingLines = Files.readAllLines(Paths.get(PROFILES_FILE));
+            for (String line : existingLines) {
+                if (line.startsWith(taId + ",")) {
+                    lines.add(newLine);
+                    found = true;
+                } else {
+                    lines.add(line);
+                }
+            }
+            if (!found) lines.add(newLine);
+            Files.write(Paths.get(PROFILES_FILE), lines, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            System.err.println("Failed to save profile: " + e.getMessage());
+        }
     }
 }
