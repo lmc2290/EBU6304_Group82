@@ -235,7 +235,6 @@ public class MODashboardUI extends DashBoardUI {
         } else if (panel instanceof JFrame) {
             JFrame frame = (JFrame) panel;
             frame.setTitle(title);
-            frame.setSize(800, 600);
             frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
             frame.setLocationRelativeTo(this);
             frame.setVisible(true);

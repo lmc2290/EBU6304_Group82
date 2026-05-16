@@ -1,20 +1,18 @@
 package AdminPage;
 
-import LoginPage.MockDataManager;
 import LoginPage.User;
+import LoginPage.UnifiedDataStore;
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
 
 public class Admin_CourseApplicationControl {
-   private final User currentUser;
+    private final User currentUser;
     private final Admin_CourseApplicationControlUI boundary;
     private DefaultTableModel tableModel;
-
-    private final String CSV_PATH = "data/modules.csv";
 
     public Admin_CourseApplicationControl(User user) {
         this.currentUser = user;
@@ -29,129 +27,42 @@ public class Admin_CourseApplicationControl {
         return boundary;
     }
 
-    // ==================================================
-    // Load Data
-    // ==================================================
     public void loadData() {
-
         if (tableModel == null) return;
         tableModel.setRowCount(0);
-        addMockData();
-        loadDataFromCSV();
-    }
 
-    // ==================================================
-    // Default Demo Data
-    // ==================================================
-    public void addMockData() {
-        tableModel.addRow(new Object[]{"CS101", "Java Basics", "Prof. Lee", "VIEW", "Approved", "Reject"});
-        tableModel.addRow(new Object[]{"CS202", "Database Systems", "Dr. Wong", "VIEW", "Approved", "Reject"});
-        tableModel.addRow(new Object[]{"CS303", "AI Intro", "Dr. Chen", "VIEW", "Approved", "Reject"});
-    }
+        List<String[]> modules = UnifiedDataStore.getAllModules();
 
-    // ==================================================
-    // Read CSV File
-    // ==================================================
-    public void loadDataFromCSV() {
+        for (String[] module : modules) {
+            if (module.length >= 5) {
+                String moduleCode = module[0];
+                String moduleName = module[1];
+                String moId = module[2];
+                String status = module[4];
 
-        File file = new File(CSV_PATH);
-        if (!file.exists()) return;
-
-        // 收集需要自动变更为 Approved 的数据ID
-        List<String> modulesToAutoApprove = new ArrayList<>();
-
-        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-            br.readLine(); // skip header
-            String line;
-
-            while ((line = br.readLine()) != null) {
-                String[] p = line.split(",");
-
-                if (p.length >= 3) {
-                    String status = "Approved";
-                    if (p.length >= 6 && !p[5].isBlank()) {
-                        status = p[5];
-                    }
-
-                    // ==========================================
-                    // 【核心修正区：自动审批逻辑】
-                    // 落实老师反馈：“默认通过以减少工作量”。
-                    // Admin 界面一打开，遇到未审批的请求，自动转为 Approved。
-                    // ==========================================
-                    if (status.equalsIgnoreCase("Pending Review") || status.equalsIgnoreCase("Pending")) {
-                        status = "Approved";
-                        modulesToAutoApprove.add(p[0]); // 标记需要自动回写数据库的行
-                    }
-
-                    tableModel.addRow(new Object[]{
-                            p[0],
-                            p[0],
-                            p[2],
-                            "VIEW",
-                            status,
-                            "Reject"
-                    });
-                }
+                tableModel.addRow(new Object[]{
+                        moduleCode,
+                        moduleName,
+                        moId,
+                        "VIEW",
+                        status,
+                        status.equals("Pending") ? "Approve" : "Reject"
+                });
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        // 文件读完后，把自动通过的数据状态写回 CSV 文件，确保全局状态同步
-        for (String moduleId : modulesToAutoApprove) {
-            updateCSVFile(moduleId, "Approved");
-            // 同步修改内存中的静态数据
-            MockDataManager.updateModuleStatus(moduleId, "Approved");
         }
     }
 
-    // ==================================================
-    // Reject Action
-    // ==================================================
-    public void rejectModule(String moduleId, String reason) {
-        String status = "Rejected: " + reason.replace(",", ";");
-        MockDataManager.updateModuleStatus(moduleId, status);
-        updateCSVFile(moduleId, status);
+    public void approveModule(String moduleCode) {
+        UnifiedDataStore.updateModuleStatus(moduleCode, "Approved", currentUser.getId(), null);
+        loadData();
     }
 
-    // ==================================================
-    // Update CSV
-    // ==================================================
-    public void updateCSVFile(String moduleId, String newStatus) {
-
-        File file = new File(CSV_PATH);
-        if (!file.exists()) return;
-
-        List<String> lines = new ArrayList<>();
-
-        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length >= 6 && parts[0].equalsIgnoreCase(moduleId)) {
-                    parts[5] = newStatus;
-                    line = String.join(",", parts);
-                }
-                lines.add(line);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        try (PrintWriter pw = new PrintWriter(new FileWriter(file))) {
-            for (String s : lines) {
-                pw.println(s);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    public void rejectModule(String moduleCode, String reason) {
+        UnifiedDataStore.updateModuleStatus(moduleCode, "Rejected", currentUser.getId(), reason);
+        loadData();
     }
 
-    // ==================================================
-    // Export CSV
-    // ==================================================
     public void exportData() {
-
         if (tableModel == null) return;
         JFileChooser chooser = new JFileChooser();
         chooser.setSelectedFile(new File("Course_Applications.csv"));
@@ -165,7 +76,6 @@ public class Admin_CourseApplicationControl {
         }
 
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8))) {
-            // Header
             for (int i = 0; i < tableModel.getColumnCount(); i++) {
                 writer.write(tableModel.getColumnName(i));
                 if (i < tableModel.getColumnCount() - 1) {
@@ -174,7 +84,6 @@ public class Admin_CourseApplicationControl {
             }
             writer.newLine();
 
-            // Rows
             for (int i = 0; i < tableModel.getRowCount(); i++) {
                 for (int j = 0; j < tableModel.getColumnCount(); j++) {
                     Object val = tableModel.getValueAt(i, j);
