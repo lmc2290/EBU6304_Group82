@@ -1,60 +1,74 @@
 package LoginPage;
 
-import java.awt.*;
-import java.util.ArrayList;
-import java.util.List;
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.util.List;
 
-public class MOScheduleInterviewsUI extends JFrame {
-    private User currentUser;
+public class MOScheduleInterviewsUI extends JPanel {
+    private final User currentUser;
     private JComboBox<String> moduleComboBox;
     private JTable shortlistedTable;
     private DefaultTableModel tableModel;
     private String selectedModuleId;
 
+    // Color palette
+    private static final Color BG = new Color(241, 245, 249);
+    private static final Color CARD_BG = Color.WHITE;
+    private static final Color TEXT_PRIMARY = new Color(15, 23, 42);
+    private static final Color TEXT_SECONDARY = new Color(100, 116, 139);
+    private static final Color PRIMARY = new Color(79, 70, 229);
+    private static final Color ACCENT_ORANGE = new Color(245, 158, 11);
+    private static final Color TABLE_HEADER = new Color(52, 58, 64);
+    private static final Color BORDER = new Color(226, 232, 240);
+    private static final Color INPUT_BG = new Color(248, 250, 252);
+
     public MOScheduleInterviewsUI(User user) {
         this.currentUser = user;
-        setTitle("Schedule Interviews");
-        setSize(800, 600);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setLocationRelativeTo(null);
+        setLayout(new BorderLayout(10, 10));
+        setBackground(BG);
+        setBorder(new EmptyBorder(20, 20, 20, 20));
+        initializeUI();
+    }
 
-        JPanel mainPanel = new JPanel();
-        mainPanel.setLayout(new BorderLayout());
-        mainPanel.setBackground(new Color(247, 247, 247));
+    private void initializeUI() {
+        add(createHeaderPanel(), BorderLayout.NORTH);
+        add(createTablePanel(), BorderLayout.CENTER);
+    }
 
-        JLabel headerLabel = new JLabel("Schedule Interviews", SwingConstants.CENTER);
-        headerLabel.setFont(new Font("Arial", Font.BOLD, 20));
-        headerLabel.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 0));
-        mainPanel.add(headerLabel, BorderLayout.NORTH);
+    private JPanel createHeaderPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(CARD_BG);
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER, 1, true),
+                new EmptyBorder(16, 24, 16, 24)
+        ));
 
-        JPanel filterPanel = new JPanel();
-        filterPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
-        filterPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
-        filterPanel.setBackground(new Color(240, 240, 240));
+        JLabel titleLabel = new JLabel("\uD83D\uDCD5  Schedule Interviews");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        titleLabel.setForeground(TEXT_PRIMARY);
 
-        filterPanel.add(new JLabel("Select Module:"));
+        // Module selector in header
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        rightPanel.setBackground(CARD_BG);
+
+        JLabel filterLabel = new JLabel("Module:");
+        filterLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        filterLabel.setForeground(TEXT_SECONDARY);
+        rightPanel.add(filterLabel);
+
         moduleComboBox = new JComboBox<>();
+        moduleComboBox.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        moduleComboBox.setPreferredSize(new Dimension(140, 32));
 
-        List<String[]> modules = UnifiedDataStore.getApprovedModules();
-        for (String[] module : modules) {
-            if (module.length >= 2) {
-                moduleComboBox.addItem(module[0]);
-            }
+        List<Module> modules = MODataStore.loadModules();
+        for (Module module : modules) {
+            moduleComboBox.addItem(module.getModuleName());
         }
-
-        if (modules.isEmpty()) {
-            moduleComboBox.addItem("ECS401");
-            moduleComboBox.addItem("ECS414");
+        if (!modules.isEmpty()) {
+            selectedModuleId = modules.get(0).getModuleName();
         }
-
-        if (!modules.isEmpty() && modules.get(0).length >= 1) {
-            selectedModuleId = modules.get(0)[0];
-        } else {
-            selectedModuleId = "ECS401";
-        }
-
         moduleComboBox.addActionListener(e -> {
             String selected = (String) moduleComboBox.getSelectedItem();
             if (selected != null) {
@@ -62,15 +76,22 @@ public class MOScheduleInterviewsUI extends JFrame {
                 refreshShortlistedList();
             }
         });
-        filterPanel.add(moduleComboBox);
+        rightPanel.add(moduleComboBox);
 
-        mainPanel.add(filterPanel, BorderLayout.NORTH);
+        panel.add(titleLabel, BorderLayout.WEST);
+        panel.add(rightPanel, BorderLayout.EAST);
+        return panel;
+    }
 
-        JPanel tablePanel = new JPanel();
-        tablePanel.setLayout(new BorderLayout());
-        tablePanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 20, 20));
+    private JPanel createTablePanel() {
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setBackground(CARD_BG);
+        wrapper.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER, 1, true),
+                new EmptyBorder(16, 16, 16, 16)
+        ));
 
-        String[] columnNames = {"Application ID", "Name", "Module", "Status", "Action"};
+        String[] columnNames = {"ID", "Name", "Course", "English Level", "Action"};
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -79,28 +100,27 @@ public class MOScheduleInterviewsUI extends JFrame {
         };
 
         shortlistedTable = new JTable(tableModel);
-        shortlistedTable.setRowHeight(30);
+        shortlistedTable.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        shortlistedTable.setRowHeight(36);
+        shortlistedTable.setGridColor(new Color(230, 233, 238));
+        shortlistedTable.setSelectionBackground(new Color(220, 235, 252));
+        shortlistedTable.setSelectionForeground(Color.BLACK);
+        shortlistedTable.setShowHorizontalLines(true);
+        shortlistedTable.setShowVerticalLines(false);
+        shortlistedTable.setFillsViewportHeight(true);
+
+        shortlistedTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
+        shortlistedTable.getTableHeader().setBackground(TABLE_HEADER);
+        shortlistedTable.getTableHeader().setForeground(Color.WHITE);
+
         JScrollPane scrollPane = new JScrollPane(shortlistedTable);
-        tablePanel.add(scrollPane, BorderLayout.CENTER);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getViewport().setBackground(Color.WHITE);
 
-        mainPanel.add(tablePanel, BorderLayout.CENTER);
-
-        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        JButton backButton = new JButton("Back to Dashboard");
-        backButton.setFont(new Font("Arial", Font.PLAIN, 14));
-        backButton.addActionListener(e -> {
-            dispose();
-            Window parentWindow = SwingUtilities.getWindowAncestor(this);
-            if (parentWindow != null) {
-                parentWindow.toFront();
-            }
-        });
-        bottomPanel.add(backButton);
-        mainPanel.add(bottomPanel, BorderLayout.SOUTH);
-
-        add(mainPanel);
+        wrapper.add(scrollPane, BorderLayout.CENTER);
         refreshShortlistedList();
 
+        // Click handler for action column
         shortlistedTable.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent evt) {
@@ -108,153 +128,216 @@ public class MOScheduleInterviewsUI extends JFrame {
                 int col = shortlistedTable.columnAtPoint(evt.getPoint());
                 if (row >= 0 && col == 4) {
                     String applicantId = (String) shortlistedTable.getValueAt(row, 0);
-                    String applicantName = (String) shortlistedTable.getValueAt(row, 1);
-                    showInterviewMenu(applicantId, applicantName);
+                    Applicant applicant = getApplicantById(applicantId);
+                    if (applicant != null) {
+                        showInterviewMenu(applicant);
+                    }
                 }
             }
         });
+
+        return wrapper;
     }
 
     private void refreshShortlistedList() {
         tableModel.setRowCount(0);
-
-        // Include both Pending and Shortlisted applicants for interview scheduling
-        List<String[]> pending = UnifiedDataStore.getApplicantsByStatus("Pending");
-        List<String[]> shortlisted = UnifiedDataStore.getShortlistedApplicants();
-        List<String[]> allCandidates = new ArrayList<>(shortlisted);
-        allCandidates.addAll(pending);
-
-        for (String[] applicant : allCandidates) {
-            if (applicant.length >= 8 && applicant[3].equals(selectedModuleId)) {
+        List<Applicant> applicants = MODataStore.loadApplicants();
+        for (Applicant applicant : applicants) {
+            if (applicant.getModuleName().equals(selectedModuleId) && "Shortlisted".equals(applicant.getStatus())) {
                 Object[] row = new Object[5];
-                row[0] = applicant[0];  // applicationId
-                row[1] = applicant[2];  // taName
-                row[2] = applicant[4];  // moduleName
-                row[3] = applicant[7];  // status
-                row[4] = "Schedule Interview";
+                row[0] = applicant.getApplicantId();
+                row[1] = applicant.getName();
+                row[2] = applicant.getCourse();
+                row[3] = applicant.getEnglishLevel();
+                row[4] = "\uD83D\uDCC5 Schedule";
                 tableModel.addRow(row);
             }
         }
     }
 
-    private void showInterviewMenu(String applicationId, String applicantName) {
+    private void showInterviewMenu(Applicant applicant) {
         JPopupMenu menu = new JPopupMenu();
 
-        JMenuItem scheduleItem = new JMenuItem("Schedule Interview");
-        scheduleItem.addActionListener(e -> scheduleInterview(applicationId, applicantName));
+        JMenuItem scheduleItem = new JMenuItem("\uD83D\uDCC5 Schedule Interview");
+        scheduleItem.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        scheduleItem.addActionListener(e -> scheduleInterview(applicant));
         menu.add(scheduleItem);
 
-        JMenuItem sendMessageItem = new JMenuItem("Send Message");
-        sendMessageItem.addActionListener(e -> sendMessage(applicationId, applicantName));
+        JMenuItem sendMessageItem = new JMenuItem("\u2709 Send Message");
+        sendMessageItem.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        sendMessageItem.addActionListener(e -> sendMessage(applicant));
         menu.add(sendMessageItem);
 
         menu.show(shortlistedTable, 100, 100);
     }
 
-    private void scheduleInterview(String applicationId, String applicantName) {
-        JDialog dialog = new JDialog(this, "Schedule Interview", true);
-        dialog.setSize(400, 350);
+    private void scheduleInterview(Applicant applicant) {
+        JDialog dialog = new JDialog(
+                SwingUtilities.getWindowAncestor(this),
+                "Schedule Interview - " + applicant.getName(),
+                Dialog.ModalityType.APPLICATION_MODAL
+        );
+        dialog.setSize(450, 350);
         dialog.setLocationRelativeTo(this);
 
-        JPanel panel = new JPanel();
-        panel.setLayout(new GridLayout(5, 2, 10, 10));
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        JPanel panel = new JPanel(new BorderLayout(12, 12));
+        panel.setBorder(new EmptyBorder(24, 24, 24, 24));
+        panel.setBackground(CARD_BG);
 
-        panel.add(new JLabel("Application ID:"));
-        panel.add(new JLabel(applicationId));
+        // Info header
+        JLabel infoLabel = new JLabel("Schedule interview for: " + applicant.getName());
+        infoLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        infoLabel.setForeground(TEXT_PRIMARY);
+        panel.add(infoLabel, BorderLayout.NORTH);
 
-        panel.add(new JLabel("Date & Time (yyyy-MM-dd HH:mm):"));
-        JTextField dateField = new JTextField();
-        dateField.setText("2026-05-15 10:00");
-        panel.add(dateField);
+        // Form
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        formPanel.setBackground(CARD_BG);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(8, 8, 8, 8);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        panel.add(new JLabel("Location:"));
-        JTextField locationField = new JTextField();
-        locationField.setText("Room 101");
-        panel.add(locationField);
+        JTextField dateField = createStyledTextField("YYYY-MM-DD");
+        JTextField timeField = createStyledTextField("HH:MM");
+        JTextField locationField = createStyledTextField("");
 
-        JButton scheduleButton = new JButton("Schedule");
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        formPanel.add(createFormLabel("Date:"), gbc);
+        gbc.gridx = 1;
+        formPanel.add(dateField, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        formPanel.add(createFormLabel("Time:"), gbc);
+        gbc.gridx = 1;
+        formPanel.add(timeField, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        formPanel.add(createFormLabel("Location:"), gbc);
+        gbc.gridx = 1;
+        formPanel.add(locationField, gbc);
+
+        panel.add(formPanel, BorderLayout.CENTER);
+
+        // Button
+        JButton scheduleButton = createStyledButton("\u2713  Schedule", PRIMARY);
         scheduleButton.addActionListener(e -> {
-            String interviewTime = dateField.getText();
+            String date = dateField.getText();
+            String time = timeField.getText();
             String location = locationField.getText();
-
-            if (!interviewTime.isEmpty() && !location.isEmpty()) {
-                // Find applicant details from the table or applicants data
-                List<String[]> applicants = UnifiedDataStore.getAllApplicants();
-                String taId = applicantName;
-                String moduleName = selectedModuleId;
-                for (String[] a : applicants) {
-                    if (a.length >= 8 && a[0].equals(applicationId)) {
-                        taId = a[1];
-                        moduleName = a.length >= 5 ? a[4] : selectedModuleId;
-                        break;
-                    }
-                }
-
-                UnifiedDataStore.addInterview(applicationId, taId, applicantName,
-                        selectedModuleId, moduleName, interviewTime, location,
-                        currentUser.getId());
-
+            if (!date.isEmpty() && !time.isEmpty() && !location.isEmpty()) {
+                // Persist interview to CSV
+                MODataStore.saveInterview(applicant.getApplicantId(), applicant.getName(),
+                        applicant.getModuleName(), date, time, location);
                 JOptionPane.showMessageDialog(dialog,
-                    "Interview scheduled for " + applicantName + " at " + interviewTime + " in " + location,
-                    "Success", JOptionPane.INFORMATION_MESSAGE);
+                        "Interview scheduled for " + applicant.getName()
+                                + " on " + date + " at " + time + " in " + location,
+                        "Success", JOptionPane.INFORMATION_MESSAGE);
                 dialog.dispose();
             } else {
                 JOptionPane.showMessageDialog(dialog, "Please fill in all fields", "Error", JOptionPane.ERROR_MESSAGE);
             }
         });
 
-        panel.add(new JLabel());
-        panel.add(scheduleButton);
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        btnPanel.setBackground(CARD_BG);
+        btnPanel.add(scheduleButton);
+        panel.add(btnPanel, BorderLayout.SOUTH);
 
-        dialog.add(panel);
+        dialog.setContentPane(panel);
         dialog.setVisible(true);
     }
 
-    private void sendMessage(String applicationId, String applicantName) {
-        JDialog dialog = new JDialog(this, "Send Message", true);
-        dialog.setSize(400, 300);
+    private void sendMessage(Applicant applicant) {
+        JDialog dialog = new JDialog(
+                SwingUtilities.getWindowAncestor(this),
+                "Send Message to " + applicant.getName(),
+                Dialog.ModalityType.APPLICATION_MODAL
+        );
+        dialog.setSize(500, 400);
         dialog.setLocationRelativeTo(this);
 
-        JPanel panel = new JPanel();
-        panel.setLayout(new BorderLayout());
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(new EmptyBorder(24, 24, 24, 24));
+        panel.setBackground(CARD_BG);
 
-        panel.add(new JLabel("To: " + applicantName), BorderLayout.NORTH);
+        panel.add(new JLabel("To: " + applicant.getName()), BorderLayout.NORTH);
 
-        JTextArea messageArea = new JTextArea(8, 30);
+        JTextArea messageArea = new JTextArea(10, 30);
         messageArea.setLineWrap(true);
         messageArea.setWrapStyleWord(true);
-        messageArea.setText("Dear " + applicantName + ",\n\nI would like to invite you for an interview...");
+        messageArea.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        messageArea.setText("Dear " + applicant.getName() + ",\n\nI would like to invite you for an interview...");
+        messageArea.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER),
+                new EmptyBorder(10, 12, 10, 12)
+        ));
         JScrollPane scrollPane = new JScrollPane(messageArea);
         panel.add(scrollPane, BorderLayout.CENTER);
 
-        JButton sendButton = new JButton("Send");
+        JButton sendButton = createStyledButton("\u2713  Send", PRIMARY);
         sendButton.addActionListener(e -> {
             String message = messageArea.getText();
             if (!message.isEmpty()) {
-                String taId = applicantName;
-                List<String[]> applicants = UnifiedDataStore.getAllApplicants();
-                for (String[] a : applicants) {
-                    if (a.length >= 8 && a[0].equals(applicationId)) {
-                        taId = a[1];
-                        break;
-                    }
-                }
-                UnifiedDataStore.addMessage("MO", currentUser.getId(), taId, applicantName,
-                        selectedModuleId, "Interview Invitation", message);
-                JOptionPane.showMessageDialog(dialog, "Message sent to " + applicantName, "Success", JOptionPane.INFORMATION_MESSAGE);
+                // Persist message to CSV
+                MODataStore.saveMessage("MO", currentUser.getId(),
+                        applicant.getApplicantId(), applicant.getName(),
+                        applicant.getModuleName(), message);
+                JOptionPane.showMessageDialog(dialog, "Message sent to " + applicant.getName(), "Success", JOptionPane.INFORMATION_MESSAGE);
                 dialog.dispose();
             } else {
                 JOptionPane.showMessageDialog(dialog, "Message cannot be empty", "Error", JOptionPane.ERROR_MESSAGE);
             }
         });
 
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.add(sendButton);
-        panel.add(buttonPanel, BorderLayout.SOUTH);
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        btnPanel.setBackground(CARD_BG);
+        btnPanel.add(sendButton);
+        panel.add(btnPanel, BorderLayout.SOUTH);
 
-        dialog.add(panel);
+        dialog.setContentPane(panel);
         dialog.setVisible(true);
+    }
+
+    private Applicant getApplicantById(String applicantId) {
+        for (Applicant applicant : MODataStore.loadApplicants()) {
+            if (applicant.getApplicantId().equals(applicantId)) {
+                return applicant;
+            }
+        }
+        return null;
+    }
+
+    private JLabel createFormLabel(String text) {
+        JLabel label = new JLabel(text);
+        label.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        label.setForeground(TEXT_PRIMARY);
+        return label;
+    }
+
+    private JTextField createStyledTextField(String text) {
+        JTextField field = new JTextField(text, 18);
+        field.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        field.setBackground(INPUT_BG);
+        field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER),
+                new EmptyBorder(8, 12, 8, 12)
+        ));
+        return field;
+    }
+
+    private JButton createStyledButton(String text, Color bg) {
+        JButton btn = new JButton(text);
+        btn.setFocusPainted(false);
+        btn.setBorderPainted(false);
+        btn.setOpaque(true);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btn.setForeground(Color.WHITE);
+        btn.setBackground(bg);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setBorder(new EmptyBorder(10, 24, 10, 24));
+        return btn;
     }
 }

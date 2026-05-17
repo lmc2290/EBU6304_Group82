@@ -20,6 +20,9 @@ public abstract class DashBoardUI extends JFrame {
 
         // Call the abstract method to let subclasses build their specific UI
         initializeUI();
+
+        // All dashboards start maximized
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
     }
 
     /**

@@ -1,9 +1,10 @@
 package LoginPage;
 
-import javax.swing.*;
 import AdminPage.AdminDashboardUI;
 import TAUI.TADashboardUI;
 import TAUI.TAController;
+import javax.swing.*;
+
 /**
  * Control Class
  * Encapsulates the coordination and authentication logic.
@@ -38,20 +39,31 @@ public class LoginController {
                 routeToDashboard(authenticatedUser);
 
             } else if (idNum >= 1 && idNum <= 100) {
-                authenticatedUser = new User(idStr, "MO");
-                authenticatedUser.setMoId(idStr);
+                // 给 MO 分配 moduleName，避免 applicant list 为空
+                String moduleName = assignModuleToMO(idNum);
+                authenticatedUser = new User(idStr, "MO", moduleName);
                 loginUI.showMessage("MO identity detected. Routing to MO Dashboard...");
                 routeToDashboard(authenticatedUser);
 
             } else {
                 authenticatedUser = new User(idStr, "TA");
-                authenticatedUser.setTaId(idStr);
                 loginUI.showMessage("TA (Student) identity detected. Routing to TA Dashboard...");
                 routeToDashboard(authenticatedUser);
             }
 
         } catch (NumberFormatException ex) {
             loginUI.showError("ID must be a valid number!");
+        }
+    }
+
+    /**
+     * Assigns module to MO based on ID
+     */
+    private String assignModuleToMO(int idNum) {
+        if (idNum <= 50) {
+            return "CS101";
+        } else {
+            return "CS202";
         }
     }
 
@@ -73,6 +85,9 @@ public class LoginController {
         }
     }
 
+    /**
+     * Creates the appropriate dashboard based on user role
+     */
     private DashBoardUI createDashboardForUser(User user) {
         switch (user.getRole()) {
             case "Admin":
@@ -80,9 +95,7 @@ public class LoginController {
             case "MO":
                 return new MODashboardUI(user);
             case "TA":
-                // 👇 确保这里是这两行代码！
-                TAController taController = new TAController();
-                return new TADashboardUI(user, taController);
+                return new TADashboardUI(user, new TAController());
             default:
                 loginUI.showError("Unknown role detected.");
                 return null;

@@ -1,59 +1,73 @@
 package LoginPage;
 
-import java.awt.*;
-import java.util.ArrayList;
-import java.util.List;
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.util.List;
 
-public class MOMessageTAUI extends JFrame {
-    private User currentUser;
+public class MOMessageTAUI extends JPanel {
+    private final User currentUser;
     private JComboBox<String> moduleComboBox;
     private JTable taTable;
     private DefaultTableModel tableModel;
     private String selectedModuleId;
 
+    // Color palette
+    private static final Color BG = new Color(241, 245, 249);
+    private static final Color CARD_BG = Color.WHITE;
+    private static final Color TEXT_PRIMARY = new Color(15, 23, 42);
+    private static final Color TEXT_SECONDARY = new Color(100, 116, 139);
+    private static final Color PRIMARY = new Color(79, 70, 229);
+    private static final Color ACCENT_ROSE = new Color(244, 63, 94);
+    private static final Color TABLE_HEADER = new Color(52, 58, 64);
+    private static final Color BORDER = new Color(226, 232, 240);
+
     public MOMessageTAUI(User user) {
         this.currentUser = user;
-        setTitle("Message TA");
-        setSize(800, 600);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setLocationRelativeTo(null);
+        setLayout(new BorderLayout(10, 10));
+        setBackground(BG);
+        setBorder(new EmptyBorder(20, 20, 20, 20));
+        initializeUI();
+    }
 
-        JPanel mainPanel = new JPanel();
-        mainPanel.setLayout(new BorderLayout());
-        mainPanel.setBackground(new Color(247, 247, 247));
+    private void initializeUI() {
+        add(createHeaderPanel(), BorderLayout.NORTH);
+        add(createTablePanel(), BorderLayout.CENTER);
+    }
 
-        JLabel headerLabel = new JLabel("Message TA", SwingConstants.CENTER);
-        headerLabel.setFont(new Font("Arial", Font.BOLD, 20));
-        headerLabel.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 0));
-        mainPanel.add(headerLabel, BorderLayout.NORTH);
+    private JPanel createHeaderPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(CARD_BG);
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER, 1, true),
+                new EmptyBorder(16, 24, 16, 24)
+        ));
 
-        JPanel filterPanel = new JPanel();
-        filterPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
-        filterPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
-        filterPanel.setBackground(new Color(240, 240, 240));
+        JLabel titleLabel = new JLabel("\u2709\uFE0F  Message TA");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        titleLabel.setForeground(TEXT_PRIMARY);
 
-        filterPanel.add(new JLabel("Select Module:"));
+        // Module selector in header
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        rightPanel.setBackground(CARD_BG);
+
+        JLabel filterLabel = new JLabel("Module:");
+        filterLabel.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        filterLabel.setForeground(TEXT_SECONDARY);
+        rightPanel.add(filterLabel);
+
         moduleComboBox = new JComboBox<>();
+        moduleComboBox.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        moduleComboBox.setPreferredSize(new Dimension(140, 32));
 
-        List<String[]> modules = UnifiedDataStore.getApprovedModules();
-        for (String[] module : modules) {
-            if (module.length >= 2) {
-                moduleComboBox.addItem(module[0]);
-            }
+        List<Module> modules = MODataStore.loadModules();
+        for (Module module : modules) {
+            moduleComboBox.addItem(module.getModuleName());
         }
-
-        if (modules.isEmpty()) {
-            // No modules available
+        if (!modules.isEmpty()) {
+            selectedModuleId = modules.get(0).getModuleName();
         }
-
-        if (!modules.isEmpty() && modules.get(0).length >= 1) {
-            selectedModuleId = modules.get(0)[0];
-        } else {
-            selectedModuleId = "";
-        }
-
         moduleComboBox.addActionListener(e -> {
             String selected = (String) moduleComboBox.getSelectedItem();
             if (selected != null) {
@@ -61,15 +75,22 @@ public class MOMessageTAUI extends JFrame {
                 refreshTAList();
             }
         });
-        filterPanel.add(moduleComboBox);
+        rightPanel.add(moduleComboBox);
 
-        mainPanel.add(filterPanel, BorderLayout.NORTH);
+        panel.add(titleLabel, BorderLayout.WEST);
+        panel.add(rightPanel, BorderLayout.EAST);
+        return panel;
+    }
 
-        JPanel tablePanel = new JPanel();
-        tablePanel.setLayout(new BorderLayout());
-        tablePanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 20, 20));
+    private JPanel createTablePanel() {
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setBackground(CARD_BG);
+        wrapper.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER, 1, true),
+                new EmptyBorder(16, 16, 16, 16)
+        ));
 
-        String[] columnNames = {"ID", "Name", "Email", "Module", "Action"};
+        String[] columnNames = {"TA ID", "Name", "Email", "Module", "Action"};
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -78,28 +99,27 @@ public class MOMessageTAUI extends JFrame {
         };
 
         taTable = new JTable(tableModel);
-        taTable.setRowHeight(30);
+        taTable.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        taTable.setRowHeight(36);
+        taTable.setGridColor(new Color(230, 233, 238));
+        taTable.setSelectionBackground(new Color(220, 235, 252));
+        taTable.setSelectionForeground(Color.BLACK);
+        taTable.setShowHorizontalLines(true);
+        taTable.setShowVerticalLines(false);
+        taTable.setFillsViewportHeight(true);
+
+        taTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
+        taTable.getTableHeader().setBackground(TABLE_HEADER);
+        taTable.getTableHeader().setForeground(Color.WHITE);
+
         JScrollPane scrollPane = new JScrollPane(taTable);
-        tablePanel.add(scrollPane, BorderLayout.CENTER);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getViewport().setBackground(Color.WHITE);
 
-        mainPanel.add(tablePanel, BorderLayout.CENTER);
-
-        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        JButton backButton = new JButton("Back to Dashboard");
-        backButton.setFont(new Font("Arial", Font.PLAIN, 14));
-        backButton.addActionListener(e -> {
-            dispose();
-            Window parentWindow = SwingUtilities.getWindowAncestor(this);
-            if (parentWindow != null) {
-                parentWindow.toFront();
-            }
-        });
-        bottomPanel.add(backButton);
-        mainPanel.add(bottomPanel, BorderLayout.SOUTH);
-
-        add(mainPanel);
+        wrapper.add(scrollPane, BorderLayout.CENTER);
         refreshTAList();
 
+        // Click handler for "Send Message" action
         taTable.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent evt) {
@@ -112,80 +132,87 @@ public class MOMessageTAUI extends JFrame {
                 }
             }
         });
+
+        return wrapper;
     }
 
     private void refreshTAList() {
         tableModel.setRowCount(0);
-
-        // Include both Approved and Shortlisted applicants
-        List<String[]> approved = UnifiedDataStore.getApprovedApplicants();
-        List<String[]> shortlisted = UnifiedDataStore.getShortlistedApplicants();
-        List<String[]> allTargets = new ArrayList<>();
-        allTargets.addAll(approved);
-        allTargets.addAll(shortlisted);
-
-        // Deduplicate by taId
-        java.util.Set<String> seenTaIds = new java.util.HashSet<>();
-        for (String[] applicant : allTargets) {
-            if (applicant.length >= 8 && applicant[3].equals(selectedModuleId)) {
-                String taId = applicant[1];
-                if (seenTaIds.contains(taId)) continue;
-                seenTaIds.add(taId);
-
-                String taName = applicant[2];
-                String email = taName.toLowerCase().replace(" ", ".") + "_" + taId.toLowerCase() + "@qmul.ac.uk";
-
-                Object[] row = new Object[5];
-                row[0] = taId;
-                row[1] = taName;
-                row[2] = email;
-                row[3] = applicant[3];
-                row[4] = "Send Message";
-                tableModel.addRow(row);
+        // Load Approved applicants for the selected module as "TAs"
+        List<Applicant> applicants = MODataStore.loadApplicants();
+        for (Applicant a : applicants) {
+            if (a.getModuleName().equals(selectedModuleId)
+                    && "Approved".equalsIgnoreCase(a.getStatus())) {
+                String email = a.getApplicantId().toLowerCase() + "@bupt.edu.cn";
+                addTA(a.getApplicantId(), a.getName(), email, a.getModuleName());
             }
         }
     }
 
+    private void addTA(String id, String name, String email, String moduleId) {
+        Object[] row = new Object[5];
+        row[0] = id;
+        row[1] = name;
+        row[2] = email;
+        row[3] = moduleId;
+        row[4] = "\u2709 Send Message";
+        tableModel.addRow(row);
+    }
+
     private void sendMessageToTA(String taId, String taName) {
-        JDialog dialog = new JDialog(this, "Send Message to " + taName, true);
-        dialog.setSize(500, 400);
+        JDialog dialog = new JDialog(
+                SwingUtilities.getWindowAncestor(this),
+                "Send Message to " + taName,
+                Dialog.ModalityType.APPLICATION_MODAL
+        );
+        dialog.setSize(550, 450);
         dialog.setLocationRelativeTo(this);
 
-        JPanel panel = new JPanel();
-        panel.setLayout(new BorderLayout());
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(new EmptyBorder(24, 24, 24, 24));
+        panel.setBackground(CARD_BG);
 
-        JPanel headerPanel = new JPanel();
-        headerPanel.setLayout(new GridLayout(2, 2, 10, 10));
-        headerPanel.add(new JLabel("To:"));
-        headerPanel.add(new JLabel(taName));
-        headerPanel.add(new JLabel("TA ID:"));
-        headerPanel.add(new JLabel(taId));
+        // Recipient info
+        JPanel headerPanel = new JPanel(new GridLayout(2, 2, 10, 6));
+        headerPanel.setBackground(CARD_BG);
+        headerPanel.add(createInfoLabel("To:"));
+        headerPanel.add(createInfoValue(taName));
+        headerPanel.add(createInfoLabel("TA ID:"));
+        headerPanel.add(createInfoValue(taId));
         panel.add(headerPanel, BorderLayout.NORTH);
 
-        JPanel messagePanel = new JPanel();
-        messagePanel.setLayout(new BorderLayout());
-        messagePanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
-
+        // Message area
+        JPanel messagePanel = new JPanel(new BorderLayout(8, 8));
+        messagePanel.setBackground(CARD_BG);
         messagePanel.add(new JLabel("Message:"), BorderLayout.NORTH);
+
         JTextArea messageArea = new JTextArea(10, 40);
         messageArea.setLineWrap(true);
         messageArea.setWrapStyleWord(true);
+        messageArea.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         messageArea.setText("Dear " + taName + ",\n\n");
+        messageArea.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER),
+                new EmptyBorder(10, 12, 10, 12)
+        ));
         JScrollPane scrollPane = new JScrollPane(messageArea);
         messagePanel.add(scrollPane, BorderLayout.CENTER);
-
         panel.add(messagePanel, BorderLayout.CENTER);
 
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.setLayout(new FlowLayout(FlowLayout.RIGHT));
+        // Buttons
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
+        buttonPanel.setBackground(CARD_BG);
 
-        JButton sendButton = new JButton("Send");
+        JButton cancelButton = createStyledButton("Cancel", TEXT_SECONDARY);
+        cancelButton.addActionListener(e -> dialog.dispose());
+
+        JButton sendButton = createStyledButton("\u2713  Send", PRIMARY);
         sendButton.addActionListener(e -> {
             String message = messageArea.getText();
             if (!message.isEmpty()) {
-                UnifiedDataStore.addMessage("MO", currentUser.getId(), taId, taName,
-                        selectedModuleId, "Message from MO", message);
+                // Persist message to CSV
+                MODataStore.saveMessage("MO", currentUser.getId(),
+                        taId, taName, selectedModuleId, message);
                 JOptionPane.showMessageDialog(dialog, "Message sent to " + taName, "Success", JOptionPane.INFORMATION_MESSAGE);
                 dialog.dispose();
             } else {
@@ -193,14 +220,38 @@ public class MOMessageTAUI extends JFrame {
             }
         });
 
-        JButton cancelButton = new JButton("Cancel");
-        cancelButton.addActionListener(e -> dialog.dispose());
-
-        buttonPanel.add(sendButton);
         buttonPanel.add(cancelButton);
+        buttonPanel.add(sendButton);
         panel.add(buttonPanel, BorderLayout.SOUTH);
 
-        dialog.add(panel);
+        dialog.setContentPane(panel);
         dialog.setVisible(true);
+    }
+
+    private JLabel createInfoLabel(String text) {
+        JLabel label = new JLabel(text);
+        label.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        label.setForeground(TEXT_SECONDARY);
+        return label;
+    }
+
+    private JLabel createInfoValue(String text) {
+        JLabel label = new JLabel(text);
+        label.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        label.setForeground(TEXT_PRIMARY);
+        return label;
+    }
+
+    private JButton createStyledButton(String text, Color bg) {
+        JButton btn = new JButton(text);
+        btn.setFocusPainted(false);
+        btn.setBorderPainted(false);
+        btn.setOpaque(true);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btn.setForeground(Color.WHITE);
+        btn.setBackground(bg);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setBorder(new EmptyBorder(10, 24, 10, 24));
+        return btn;
     }
 }
