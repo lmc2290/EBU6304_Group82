@@ -1,4 +1,13 @@
 applicationId,taId,taName,moduleCode,moduleName,cvFile,coverLetter,status,submittedAt,reviewedBy,reviewedAt
-APP-001,10086,Alice,CS101,Java Basics TA,Online Profile,Cover Letter,Approved,2026-05-08 10:00:00,MO,2026-05-09 10:00:00
-APP-002,10087,Bob,CS101,Java Basics TA,Online Profile,Cover Letter,Pending,2026-05-08 11:00:00,,
-APP-003,10088,Cathy,CS202,Database Systems TA,Online Profile,Cover Letter,Shortlisted,2026-05-08 12:00:00,MO,2026-05-09 11:00:00
+APP-001,TA-101,Alice,CS101,Introduction to Programming,alice_cv.pdf,Strong Java skills and tutoring experience,Approved,2026-05-01 10:00:00,1,2026-05-02 10:00:00
+APP-002,TA-102,Bob,CS101,Introduction to Programming,bob_cv.pdf,Good communication and database skills,Pending,2026-05-01 11:00:00,,
+APP-003,TA-103,Cathy,CS202,Data Structures and Algorithms,cathy_cv.pdf,Python and ML background,Shortlisted,2026-05-05 12:00:00,2,2026-05-06 11:00:00
+APP-004,TA-104,David,CS303,Database Systems,david_cv.pdf,SQL expert and OOP knowledge,Approved,2026-04-29 09:00:00,3,2026-04-30 09:00:00
+APP-005,TA-105,Emily,MA201,Linear Algebra,emily_cv.pdf,Strong math background,Approved,2026-04-26 10:00:00,5,2026-04-27 10:00:00
+APP-006,TA-106,Frank,EE101,Circuit Analysis,frank_cv.pdf,Hands-on lab experience,Approved,2026-04-21 11:00:00,7,2026-04-22 11:00:00
+APP-007,TA-107,Grace,SE301,Software Engineering,grace_cv.pdf,Agile methodology and testing expertise,Approved,2026-04-23 15:00:00,9,2026-04-24 15:00:00
+APP-008,TA-108,Henry,CS404,Artificial Intelligence,henry_cv.pdf,Deep learning research experience,Pending,2026-05-10 15:00:00,,
+APP-009,TA-109,Ivy,MA301,Probability and Statistics,ivy_cv.pdf,Statistics and R programming,Shortlisted,2026-05-08 12:00:00,6,2026-05-09 12:00:00
+APP-010,TA-110,Jack,EE202,Signal Processing,jack_cv.pdf,DSP project experience,Pending,2026-05-09 14:00:00,,
+APP-011,TA-111,Kate,ECS999,Electronic Commerce Systems,kate_cv.pdf,E-commerce platform development,Rejected,2026-05-11 22:00:00,22,2026-05-12 10:00:00
+APP-012,TA-112,Liam,CS303,Database Systems,liam_cv.pdf,NoSQL and distributed databases,Shortlisted,2026-04-30 14:00:00,3,2026-05-01 14:00:00

@@ -6,7 +6,6 @@ import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class UnifiedDataStore {
@@ -31,7 +30,7 @@ public class UnifiedDataStore {
 
             if (!Files.exists(Paths.get(MODULES_FILE))) {
                 Files.write(Paths.get(MODULES_FILE),
-                    List.of("moduleCode,moduleName,moId,requiredTas,status,createdBy,createdAt,approvedBy,approvedAt,rejectReason"),
+                    List.of("moduleCode,moduleName,moId,requiredTas,status,createdBy,createdAt,approvedBy,approvedAt,rejectReason,totalWorkHours"),
                     StandardCharsets.UTF_8, StandardOpenOption.CREATE);
             }
 
@@ -61,6 +60,11 @@ public class UnifiedDataStore {
 
     public static boolean addModule(String moduleCode, String moduleName, String moId,
                                   int requiredTas, String createdBy) {
+        return addModule(moduleCode, moduleName, moId, requiredTas, createdBy, 0);
+    }
+
+    public static boolean addModule(String moduleCode, String moduleName, String moId,
+                                  int requiredTas, String createdBy, int totalWorkHours) {
         ensureDataFilesExist();
 
         // Check for duplicate moduleCode
@@ -73,9 +77,9 @@ public class UnifiedDataStore {
         }
 
         String timestamp = LocalDateTime.now().format(DATE_FORMAT);
-        String line = String.format("%s,%s,%s,%d,Pending,%s,%s,,,",
+        String line = String.format("%s,%s,%s,%d,Pending,%s,%s,,,,%d",
                 escapeCsv(moduleCode), escapeCsv(moduleName), escapeCsv(moId),
-                requiredTas, escapeCsv(createdBy), timestamp);
+                requiredTas, escapeCsv(createdBy), timestamp, totalWorkHours);
 
         try {
             Files.write(Paths.get(MODULES_FILE), List.of(line),
@@ -148,15 +152,55 @@ public class UnifiedDataStore {
         }
     }
 
+    public static int getModuleTotalWorkHours(String moduleCode) {
+        for (String[] m : getAllModules()) {
+            if (m.length >= 11 && m[0].equalsIgnoreCase(moduleCode)) {
+                try {
+                    return Integer.parseInt(m[10]);
+                } catch (NumberFormatException e) {
+                    return 0;
+                }
+            }
+        }
+        return 0;
+    }
+
+    public static void updateModuleTotalWorkHours(String moduleCode, int totalWorkHours) {
+        List<String[]> modules = getAllModules();
+        for (String[] module : modules) {
+            if (module.length >= 5 && module[0].equalsIgnoreCase(moduleCode)) {
+                // Ensure array is large enough
+                if (module.length < 11) {
+                    String[] expanded = new String[11];
+                    System.arraycopy(module, 0, expanded, 0, module.length);
+                    for (int i = module.length; i < 11; i++) {
+                        expanded[i] = "";
+                    }
+                    module = expanded;
+                    // Replace in list
+                    int idx = modules.indexOf(module);
+                    if (idx >= 0) {
+                        modules.set(idx, module);
+                    }
+                }
+                module[10] = String.valueOf(totalWorkHours);
+                break;
+            }
+        }
+        saveModules(modules);
+    }
+
     private static void saveModules(List<String[]> modules) {
         List<String> lines = new ArrayList<>();
-        lines.add("moduleCode,moduleName,moId,requiredTas,status,createdBy,createdAt,approvedBy,approvedAt,rejectReason");
+        lines.add("moduleCode,moduleName,moId,requiredTas,status,createdBy,createdAt,approvedBy,approvedAt,rejectReason,totalWorkHours");
 
         for (String[] m : modules) {
             StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < m.length; i++) {
+            for (int i = 0; i < 11; i++) {
                 if (i > 0) sb.append(",");
-                sb.append(escapeCsv(m[i]));
+                if (i < m.length) {
+                    sb.append(escapeCsv(m[i]));
+                }
             }
             lines.add(sb.toString());
         }

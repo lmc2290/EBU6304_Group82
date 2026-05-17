@@ -26,23 +26,30 @@ public class MOApplicantListUI extends JPanel {
     private JLabel statsLabel;
     private JProgressBar limitProgressBar;
 
-    private static final Color PAGE_BG = new Color(245, 247, 250);
+    // Indigo color palette
+    private static final Color PAGE_BG = new Color(249, 250, 251);
     private static final Color CARD_BG = Color.WHITE;
-    private static final Color TITLE_COLOR = new Color(33, 37, 41);
-    private static final Color SUBTITLE_COLOR = new Color(108, 117, 125);
-    private static final Color HEADER_BG = new Color(52, 58, 64);
+    private static final Color TITLE_COLOR = new Color(17, 24, 39);
+    private static final Color SUBTITLE_COLOR = new Color(107, 114, 128);
+    private static final Color HEADER_BG = new Color(79, 70, 229);
 
-    private static final Color PRIMARY_BTN = new Color(0, 123, 255);
-    private static final Color PRIMARY_BTN_HOVER = new Color(0, 105, 217);
+    private static final Color PRIMARY_BTN = new Color(79, 70, 229);
+    private static final Color PRIMARY_BTN_HOVER = new Color(67, 56, 202);
 
-    private static final Color SECONDARY_BTN = new Color(108, 117, 125);
-    private static final Color SECONDARY_BTN_HOVER = new Color(90, 98, 104);
+    private static final Color SECONDARY_BTN = new Color(107, 114, 128);
+    private static final Color SECONDARY_BTN_HOVER = new Color(75, 85, 99);
 
-    private static final Color SUCCESS_COLOR = new Color(40, 167, 69);
-    private static final Color WARNING_COLOR = new Color(255, 193, 7);
-    private static final Color DANGER_COLOR = new Color(220, 53, 69);
+    private static final Color SUCCESS_COLOR = new Color(16, 185, 129);
+    private static final Color WARNING_COLOR = new Color(245, 158, 11);
+    private static final Color DANGER_COLOR = new Color(239, 68, 68);
 
-    private static final Color BORDER_COLOR = new Color(220, 224, 230);
+    private static final Color BORDER_COLOR = new Color(229, 231, 235);
+
+    private static final Font FONT_HEADER = new Font("Segoe UI", Font.BOLD, 22);
+    private static final Font FONT_BODY = new Font("Segoe UI", Font.PLAIN, 13);
+    private static final Font FONT_TABLE = new Font("Segoe UI", Font.PLAIN, 13);
+    private static final Font FONT_TABLE_HEADER = new Font("Segoe UI", Font.BOLD, 13);
+    private static final Font FONT_BUTTON = new Font("Segoe UI", Font.BOLD, 12);
 
     public MOApplicantListUI(User user) {
         this.currentUser = user;
@@ -68,7 +75,7 @@ public class MOApplicantListUI extends JPanel {
         titlePanel.setBackground(PAGE_BG);
 
         titleLabel = new JLabel("", SwingConstants.CENTER);
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
+        titleLabel.setFont(FONT_HEADER);
         titleLabel.setForeground(TITLE_COLOR);
         titleLabel.setBorder(BorderFactory.createEmptyBorder(5, 10, 8, 10));
 
@@ -83,12 +90,12 @@ public class MOApplicantListUI extends JPanel {
         ));
 
         statsLabel = new JLabel("", SwingConstants.CENTER);
-        statsLabel.setFont(new Font("Arial", Font.BOLD, 15));
+        statsLabel.setFont(new Font("Segoe UI", Font.BOLD, 15));
         statsLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         limitProgressBar = new JProgressBar();
         limitProgressBar.setStringPainted(true);
-        limitProgressBar.setFont(new Font("Arial", Font.BOLD, 13));
+        limitProgressBar.setFont(new Font("Segoe UI", Font.BOLD, 12));
         limitProgressBar.setPreferredSize(new Dimension(300, 26));
         limitProgressBar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
         limitProgressBar.setBorder(BorderFactory.createLineBorder(BORDER_COLOR));
@@ -130,16 +137,16 @@ public class MOApplicantListUI extends JPanel {
         };
 
         applicantTable = new JTable(tableModel);
-        applicantTable.setFont(new Font("Arial", Font.PLAIN, 14));
+        applicantTable.setFont(FONT_TABLE);
         applicantTable.setRowHeight(38);
-        applicantTable.setGridColor(new Color(230, 233, 238));
-        applicantTable.setSelectionBackground(new Color(220, 235, 252));
+        applicantTable.setGridColor(new Color(229, 231, 235));
+        applicantTable.setSelectionBackground(new Color(224, 231, 255));
         applicantTable.setSelectionForeground(Color.BLACK);
         applicantTable.setShowHorizontalLines(true);
         applicantTable.setShowVerticalLines(false);
         applicantTable.setFillsViewportHeight(true);
 
-        applicantTable.getTableHeader().setFont(new Font("Arial", Font.BOLD, 14));
+        applicantTable.getTableHeader().setFont(FONT_TABLE_HEADER);
         applicantTable.getTableHeader().setBackground(HEADER_BG);
         applicantTable.getTableHeader().setForeground(Color.WHITE);
         applicantTable.getTableHeader().setReorderingAllowed(false);
@@ -232,19 +239,19 @@ public class MOApplicantListUI extends JPanel {
 
     private JLabel createLabel(String text) {
         JLabel label = new JLabel(text);
-        label.setFont(new Font("Arial", Font.BOLD, 14));
+        label.setFont(new Font("Segoe UI", Font.BOLD, 13));
         label.setForeground(TITLE_COLOR);
         return label;
     }
 
     private void styleComboBox(JComboBox<String> comboBox) {
-        comboBox.setFont(new Font("Arial", Font.PLAIN, 14));
+        comboBox.setFont(FONT_TABLE);
         comboBox.setPreferredSize(new Dimension(120, 34));
         comboBox.setBackground(Color.WHITE);
     }
 
     private void styleTextField(JTextField textField) {
-        textField.setFont(new Font("Arial", Font.PLAIN, 14));
+        textField.setFont(FONT_TABLE);
         textField.setPreferredSize(new Dimension(140, 34));
         textField.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(BORDER_COLOR),
@@ -255,7 +262,7 @@ public class MOApplicantListUI extends JPanel {
     private JButton createStyledButton(String text, Color baseColor, Color hoverColor) {
         JButton btn = new JButton(text);
         btn.setFocusPainted(false);
-        btn.setFont(new Font("Arial", Font.BOLD, 13));
+        btn.setFont(FONT_BUTTON);
         btn.setForeground(Color.WHITE);
         btn.setBackground(baseColor);
         btn.setOpaque(true);
@@ -447,7 +454,7 @@ public class MOApplicantListUI extends JPanel {
             setOpaque(true);
             setFocusPainted(false);
             setForeground(Color.WHITE);
-            setFont(new Font("Arial", Font.BOLD, 12));
+            setFont(FONT_BUTTON);
             setCursor(new Cursor(Cursor.HAND_CURSOR));
             this.buttonColor = buttonColor;
             setBackground(buttonColor);
@@ -586,7 +593,7 @@ public class MOApplicantListUI extends JPanel {
             if ("Approved".equalsIgnoreCase(status)) {
                 c.setForeground(SUCCESS_COLOR.darker());
             } else if ("Shortlisted".equalsIgnoreCase(status)) {
-                c.setForeground(new Color(0, 102, 204));
+                c.setForeground(INFO_COLOR);
             } else if ("Rejected".equalsIgnoreCase(status)) {
                 c.setForeground(DANGER_COLOR);
             } else {
@@ -594,8 +601,10 @@ public class MOApplicantListUI extends JPanel {
             }
 
             setHorizontalAlignment(SwingConstants.CENTER);
-            setFont(new Font("Arial", Font.BOLD, 13));
+            setFont(new Font("Segoe UI", Font.BOLD, 12));
             return c;
         }
     }
+
+    private static final Color INFO_COLOR = new Color(59, 130, 246);
 }

@@ -1,4 +1,11 @@
-moduleCode,moduleName,moId,requiredTas,status,createdBy,createdAt,approvedBy,approvedAt,rejectReason
-CS101,Java Basics,1,2,Approved,1,2026-04-30 10:00:00,Admin,2026-05-01 10:00:00,
-CS202,Database Systems,2,1,Approved,2,2026-05-05 10:00:00,Admin,2026-05-06 10:00:00,
-ECS999,Test Module,22,2,Pending,22,2026-05-11 21:59:35,,,
+moduleCode,moduleName,moId,requiredTas,status,createdBy,createdAt,approvedBy,approvedAt,rejectReason,totalWorkHours
+CS101,Introduction to Programming,1,2,Approved,1,2026-04-30 10:00:00,Admin,2026-05-01 10:00:00,,40
+CS202,Data Structures and Algorithms,2,1,Approved,2,2026-05-05 10:00:00,Admin,2026-05-06 10:00:00,,60
+ECS999,Electronic Commerce Systems,22,1,Pending,22,2026-05-11 21:59:35,,,,50
+CS303,Database Systems,3,2,Approved,3,2026-04-28 10:00:00,Admin,2026-04-29 10:00:00,,45
+CS404,Artificial Intelligence,4,1,Pending,4,2026-05-10 14:00:00,,,,55
+MA201,Linear Algebra,5,1,Approved,5,2026-04-25 09:00:00,Admin,2026-04-26 09:00:00,,35
+MA301,Probability and Statistics,6,2,Pending,6,2026-05-08 11:00:00,,,,40
+EE101,Circuit Analysis,7,1,Approved,7,2026-04-20 10:00:00,Admin,2026-04-21 10:00:00,,30
+EE202,Signal Processing,8,1,Pending,8,2026-05-09 13:00:00,,,,45
+SE301,Software Engineering,9,2,Approved,9,2026-04-22 14:00:00,Admin,2026-04-23 14:00:00,,50
